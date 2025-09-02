@@ -1,5 +1,4 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
@@ -9,18 +8,21 @@ import { ThemedView } from '@/components/ThemedView';
 export default function HomeScreen() {
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
+      headerBackgroundColor={{ light: "#ffffffff", dark: "#000000ff" }}
+      headerTitle={
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText
+            lightColor={"#000000ff"}
+            darkColor={"#ffffffff"}
+            type="title"
+          >
+            Word for Today
+          </ThemedText>
+          <HelloWave />
+        </ThemedView>
+      }
+    >
+      {/* <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
           Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
@@ -50,26 +52,23 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
           <ThemedText type="defaultSemiBold">app-example</ThemedText>.
         </ThemedText>
-      </ThemedView>
+      </ThemedView> */}
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    height: 200,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+    marginLeft: 10,
+    backgroundColor: "transparent",
+    position: "absolute",
   },
   stepContainer: {
     gap: 8,
     marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
   },
 });
