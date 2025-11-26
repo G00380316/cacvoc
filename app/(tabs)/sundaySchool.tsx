@@ -1,28 +1,28 @@
 import { StyleSheet } from "react-native";
 
-import { HelloWave } from "@/components/HelloWave";
+import { HelloWave } from "@/components/Bible";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 
 export default function HomeScreen() {
     return (
-    <ParallaxScrollView
-    headerBackgroundColor={{ light: "#ffffffff", dark: "#000000ff" }}
-    headerTitle={
-        <ThemedView style={styles.titleContainer}>
-            <ThemedText
-                lightColor={"#000000ff"}
-                darkColor={"#ffffffff"}
-                type="title"
-            >
-                Sunday School
-            </ThemedText>
-            <HelloWave />
-            </ThemedView>
-        }
+        <ParallaxScrollView
+            headerBackgroundColor={{ light: "#ffffffff", dark: "#000000ff" }}
+            headerTitle={
+                <ThemedView style={styles.titleContainer}>
+                    <ThemedText
+                        lightColor={"#000000ff"}
+                        darkColor={"#ffffffff"}
+                        type="title"
+                    >
+                        Sunday School
+                    </ThemedText>
+                    <HelloWave />
+                </ThemedView>
+            }
         >
-        {/* <ThemedView style={styles.stepContainer}>
+            {/* <ThemedView style={styles.stepContainer}>
             <ThemedText type="subtitle">Step 1: Try it</ThemedText>
             <ThemedText>
             Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
