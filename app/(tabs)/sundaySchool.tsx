@@ -1,15 +1,42 @@
 import { StyleSheet } from "react-native";
-
-import { HelloWave } from "@/components/HelloWave";
-import ParallaxScrollView from "@/components/ParallaxScrollView";
+import { defaultSystemFonts } from "react-native-render-html";
+import { LogoWave } from "@/components/Bible";
+import Animated from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { RenderHTML } from "react-native-render-html";
+import { useWindowDimensions } from "react-native";
+import { useEffect, useState } from "react";
+import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 
 export default function HomeScreen() {
+    const [text, setText] = useState("");
+    const [title, setTitle] = useState("");
+
+    const { width } = useWindowDimensions();
+    const bottom = useBottomTabOverflow();
+    const systemFonts = [...defaultSystemFonts, "Arial", "Times New Roman"];
+
+    useEffect(() => {
+        async function load() {
+            const response = await fetch("http://localhost:8000/mobile/ss");
+            const json = await response.json();
+
+            console.log(json);
+
+            if (json.response.sundaySchool) {
+                setText(json.response.sundaySchool.text);
+                setTitle(json.response.sundaySchool.title);
+            }
+        }
+        load();
+    }, []);
+
     return (
-        <ParallaxScrollView
-            headerBackgroundColor={{ light: "#ffffffff", dark: "#000000ff" }}
-            headerTitle={
+        <ThemedView style={styles.container}>
+            <Animated.ScrollView
+                contentContainerStyle={{ paddingTop: bottom, paddingBottom: bottom }}
+            >
                 <ThemedView style={styles.titleContainer}>
                     <ThemedText
                         lightColor={"#000000ff"}
@@ -18,57 +45,49 @@ export default function HomeScreen() {
                     >
                         Sunday School
                     </ThemedText>
-                    <HelloWave />
+                    <LogoWave />
                 </ThemedView>
-            }
-        >
-            {/* <ThemedView style={styles.stepContainer}>
-            <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-            <ThemedText>
-            Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-            Press{' '}
-            <ThemedText type="defaultSemiBold">
-                {Platform.select({
-                ios: 'cmd + d',
-                android: 'cmd + m',
-                web: 'F12',
-                })}
-            </ThemedText>{' '}
-            to open developer tools.
-            </ThemedText>
+
+                <ThemedView style={styles.content}>
+                    <RenderHTML
+                        systemFonts={systemFonts}
+                        contentWidth={width}
+                        source={{
+                            html: `
+                      <h2>${title}</h2>
+                      <p>${text}</p>
+                    `,
+                        }}
+                        tagsStyles={{
+                            h2: {
+                                alignSelf: "center",
+                                color: "black",
+                                fontSize: 22,
+                                fontWeight: "bold",
+                            },
+                        }}
+                    />
+                </ThemedView>
+            </Animated.ScrollView>
         </ThemedView>
-        <ThemedView style={styles.stepContainer}>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-            <ThemedText>
-            {`Tap the Explore tab to learn more about what's included in this starter app.`}
-            </ThemedText>
-        </ThemedView>
-        <ThemedView style={styles.stepContainer}>
-            <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-            <ThemedText>
-            {`When you're ready, run `}
-            <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-            <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-            <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-            <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-            </ThemedText>
-        </ThemedView> */}
-        </ParallaxScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     titleContainer: {
-        height: 200,
+        width: "100%",
         flexDirection: "row",
+        justifyContent: "space-between",
         alignItems: "center",
-        gap: 8,
-        marginLeft: 10,
         backgroundColor: "transparent",
-        position: "absolute",
+        paddingLeft: 15,
+        paddingRight: 15,
     },
-    stepContainer: {
-        gap: 8,
-        marginBottom: 8,
+    container: {
+        flex: 1,
+    },
+    content: {
+        padding: 32,
+        overflow: "hidden",
     },
 });
