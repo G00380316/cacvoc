@@ -1,72 +1,98 @@
-import { StyleSheet } from "react-native";
-import { defaultSystemFonts } from "react-native-render-html";
-import { LogoWave } from "@/components/Bible";
+import { useCallback, useEffect, useState } from "react";
+import { RefreshControl, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
+import { HtmlArticle } from "@/components/HtmlArticle";
+import { AnimatedContent, SundayArticleSkeleton } from "@/components/LoadingStates";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { RenderHTML } from "react-native-render-html";
-import { useWindowDimensions } from "react-native";
-import { useEffect, useState } from "react";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
+import { fetchFirstJson } from "@/constants/Api";
+import type { SundaySchool } from "@/constants/ContentTypes";
+import { Palette } from "@/constants/Design";
+
+type SundaySchoolResponse = {
+    response?: {
+        sundaySchool?: SundaySchool;
+    };
+    sundaySchool?: SundaySchool;
+};
 
 export default function HomeScreen() {
     const [text, setText] = useState("");
     const [title, setTitle] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const { width } = useWindowDimensions();
     const bottom = useBottomTabOverflow();
-    const systemFonts = [...defaultSystemFonts, "Arial", "Times New Roman"];
+    const insets = useSafeAreaInsets();
 
-    useEffect(() => {
-        async function load() {
-            const response = await fetch("http://localhost:8000/mobile/ss");
-            const json = await response.json();
+    const load = useCallback(async () => {
+        try {
+            const json = await fetchFirstJson<SundaySchoolResponse>([
+                "/mobile/ss",
+                "/api/getSS",
+            ]);
+            const sundaySchool =
+                json.sundaySchool ?? json.response?.sundaySchool;
 
-            console.log(json);
-
-            if (json.response.sundaySchool) {
-                setText(json.response.sundaySchool.text);
-                setTitle(json.response.sundaySchool.title);
+            if (sundaySchool) {
+                setText(sundaySchool.text ?? "");
+                setTitle(sundaySchool.title ?? "");
             }
+            setError("");
+        } catch (loadError) {
+            console.warn(loadError);
+            setError("Unable to load Sunday School.");
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
         }
-        load();
     }, []);
 
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const refresh = useCallback(() => {
+        setRefreshing(true);
+        load();
+    }, [load]);
+
     return (
-        <ThemedView style={styles.container}>
+        <ThemedView lightColor={Palette.background} style={styles.container}>
             <Animated.ScrollView
-                contentContainerStyle={{ paddingTop: bottom, paddingBottom: bottom }}
+                contentContainerStyle={{
+                    paddingTop: insets.top + 10,
+                    paddingBottom: bottom + 24,
+                }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={refresh}
+                        tintColor={Palette.accent}
+                    />
+                }
             >
-                <ThemedView style={styles.titleContainer}>
-                    <ThemedText
-                        lightColor={"#000000ff"}
-                        darkColor={"#ffffffff"}
-                        type="title"
-                    >
-                        Sunday School
-                    </ThemedText>
-                    <LogoWave />
-                </ThemedView>
+                <ScreenHeader title="Sunday School" />
 
                 <ThemedView style={styles.content}>
-                    <RenderHTML
-                        systemFonts={systemFonts}
-                        contentWidth={width}
-                        source={{
-                            html: `
+                    {loading ? (
+                        <SundayArticleSkeleton />
+                    ) : error ? (
+                        <ThemedText selectable style={styles.error}>{error}</ThemedText>
+                    ) : (
+                        <AnimatedContent>
+                            <HtmlArticle
+                                html={`
                       <h2>${title}</h2>
                       <p>${text}</p>
-                    `,
-                        }}
-                        tagsStyles={{
-                            h2: {
-                                alignSelf: "center",
-                                color: "black",
-                                fontSize: 22,
-                                fontWeight: "bold",
-                            },
-                        }}
-                    />
+                    `}
+                            />
+                        </AnimatedContent>
+                    )}
                 </ThemedView>
             </Animated.ScrollView>
         </ThemedView>
@@ -74,20 +100,18 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-    titleContainer: {
-        width: "100%",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        backgroundColor: "transparent",
-        paddingLeft: 15,
-        paddingRight: 15,
-    },
     container: {
         flex: 1,
     },
     content: {
-        padding: 32,
+        backgroundColor: Palette.background,
+        paddingHorizontal: 24,
+        paddingBottom: 32,
         overflow: "hidden",
+    },
+    error: {
+        color: Palette.danger,
+        fontSize: 17,
+        lineHeight: 24,
     },
 });

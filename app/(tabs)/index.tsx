@@ -1,13 +1,23 @@
-import { StyleSheet } from "react-native";
-import { defaultSystemFonts } from "react-native-render-html";
-import { LogoWave } from "@/components/Bible";
+import { useCallback, useEffect, useState } from "react";
+import { RefreshControl, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
+import { FloatingReaderButton } from "@/components/FloatingReaderButton";
+import { AnimatedContent, ArticleSkeleton } from "@/components/LoadingStates";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { RenderHTML } from "react-native-render-html";
-import { useWindowDimensions } from "react-native";
-import { useEffect, useState } from "react";
+import { WordForTodayArticle } from "@/components/WordForTodayArticle";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
+import { fetchFirstJson } from "@/constants/Api";
+import type { WordForToday } from "@/constants/ContentTypes";
+import { Palette } from "@/constants/Design";
+import { buildWordForTodaySpeechSegments } from "@/constants/Reader";
+
+type WordForTodayResponse = {
+    response?: WordForToday;
+    wft?: WordForToday;
+};
 
 export default function HomeScreen() {
     const [text, setText] = useState("");
@@ -15,111 +25,109 @@ export default function HomeScreen() {
     const [date, setDate] = useState("");
     const [bibleRef, setbibleRef] = useState("");
     const [byline, setByline] = useState("");
-    const [audio, setAudio] = useState(null);
+    const [audio, setAudio] = useState<string | null>(null);
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [activeSpeechIndex, setActiveSpeechIndex] = useState<number | null>(null);
+    const [scrollActivityKey, setScrollActivityKey] = useState(0);
 
-    const { width } = useWindowDimensions();
     const bottom = useBottomTabOverflow();
-    const systemFonts = [...defaultSystemFonts, "Arial", "Times New Roman"];
+    const insets = useSafeAreaInsets();
 
-    useEffect(() => {
-        async function load() {
-            const response = await fetch("http://localhost:8000/mobile/wft");
-            const json = await response.json();
+    const load = useCallback(async () => {
+        try {
+            const json = await fetchFirstJson<WordForTodayResponse>([
+                "/mobile/wft",
+                "/api/getWFT",
+            ]);
+            const wordForToday = json.wft ?? json.response;
 
-            setText(json.response.text);
-            setTitle(json.response.title);
-            setDate(json.response.date);
-            setbibleRef(json.response.bibleRef);
-            setByline(json.response.byline);
-            setAudio(json.response.audio);
+            setText(wordForToday?.text ?? "");
+            setTitle(wordForToday?.title ?? "");
+            setDate(wordForToday?.date ?? "");
+            setbibleRef(wordForToday?.bibleRef ?? "");
+            setByline(wordForToday?.byline ?? "");
+            setAudio(wordForToday?.audio ?? null);
+            setError("");
+        } catch (loadError) {
+            console.warn(loadError);
+            setError("Unable to load Word for Today.");
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
         }
-        load();
     }, []);
 
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const refresh = useCallback(() => {
+        setRefreshing(true);
+        load();
+    }, [load]);
+
     return (
-        <ThemedView style={styles.container}>
+        <ThemedView lightColor={Palette.background} style={styles.container}>
             <Animated.ScrollView
-                contentContainerStyle={{ paddingTop: bottom, paddingBottom: bottom }}
+                contentContainerStyle={{
+                    paddingTop: insets.top + 10,
+                    paddingBottom: bottom + 24,
+                }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={refresh}
+                        tintColor={Palette.accent}
+                    />
+                }
+                onScrollBeginDrag={() => setScrollActivityKey(Date.now())}
+                onMomentumScrollEnd={() => setScrollActivityKey(Date.now())}
+                scrollEventThrottle={16}
             >
-                <ThemedView style={styles.titleContainer}>
-                    <ThemedText
-                        lightColor={"#000000ff"}
-                        darkColor={"#ffffffff"}
-                        type="title"
-                    >
-                        Word for Today
-                    </ThemedText>
-                    <LogoWave />
-                </ThemedView>
+                <ScreenHeader title="Word for Today" />
 
                 <ThemedView style={styles.content}>
-                    <RenderHTML
-                        systemFonts={systemFonts}
-                        contentWidth={width}
-                        source={{
-                            html: `
-                      <h2>${title}</h2>
-                      <p class="date">${date}</p>
-                      <p class="bibleRef">${bibleRef}</p>
-                      <p class="byline" styles={color:"blue"}>${byline}</p>
-                      <p class=".text">${text}</p>
-                    `,
-                        }}
-                        tagsStyles={{
-                            h2: {
-                                alignSelf: "center",
-                                color: "black",
-                                fontSize: 22,
-                                fontWeight: "bold",
-                            },
-                            p: {
-                                marginVertical: 4,
-                            },
-                            div: {
-                                alignSelf: "center",
-                            },
-                        }}
-                        classesStyles={{
-                            date: {
-                                marginVertical: 4,
-                                fontSize: 12,
-                                color: "blue",
-                                textAlign: "center",
-                            },
-                            bibleRef: {
-                                color: "navy",
-                                textAlign: "center",
-                                marginVertical: 4,
-                                fontSize: 14,
-                            },
-                            byline: {
-                                marginVertical: 4,
-                                color: "blue",
-                                fontStyle: "italic",
-                                textAlign: "center",
-                                fontSize: 14,
-                            },
-                            text: {
-                                marginTop: 10,
-                            },
-                        }}
-                    />
+                    {loading ? (
+                        <ArticleSkeleton />
+                    ) : error ? (
+                        <ThemedText selectable style={styles.error}>{error}</ThemedText>
+                    ) : (
+                        <AnimatedContent>
+                            <WordForTodayArticle
+                                title={title}
+                                date={date}
+                                verse={bibleRef}
+                                reference={byline}
+                                text={text}
+                                activeSpeechIndex={activeSpeechIndex}
+                            />
+                        </AnimatedContent>
+                    )}
                 </ThemedView>
             </Animated.ScrollView>
+            {!loading && !error ? (
+                <FloatingReaderButton
+                    audio={audio}
+                    speechSegments={buildWordForTodaySpeechSegments({
+                        title,
+                        date,
+                        bibleRef,
+                        byline,
+                        text,
+                    })}
+                    activeSpeechIndex={activeSpeechIndex}
+                    onActiveSpeechIndexChange={setActiveSpeechIndex}
+                    bottomOffset={bottom}
+                    activityKey={scrollActivityKey}
+                />
+            ) : undefined}
         </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    titleContainer: {
-        width: "100%",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        backgroundColor: "transparent",
-        paddingLeft: 15,
-        paddingRight: 15,
-    },
     stepContainer: {
         gap: 8,
         marginBottom: 8,
@@ -132,8 +140,15 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        padding: 32,
+        backgroundColor: Palette.background,
+        paddingHorizontal: 24,
+        paddingBottom: 32,
         gap: 16,
         overflow: "hidden",
+    },
+    error: {
+        color: Palette.danger,
+        fontSize: 17,
+        lineHeight: 24,
     },
 });
