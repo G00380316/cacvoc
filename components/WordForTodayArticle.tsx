@@ -113,11 +113,12 @@ const styles = StyleSheet.create({
   },
   title: {
     color: Palette.text,
-    fontFamily: Typography.ui,
+    fontFamily: Typography.reader,
     fontSize: 28,
-    fontWeight: "800",
-    lineHeight: 36,
+    fontWeight: "700",
+    lineHeight: 35,
     marginBottom: 10,
+    marginTop: 8,
   },
   scriptureBlock: {
     backgroundColor: "transparent",

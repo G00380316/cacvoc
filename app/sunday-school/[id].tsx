@@ -55,6 +55,7 @@ export default function SundaySchoolDetailScreen() {
       <Animated.ScrollView
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}
       >
         {loading ? <SundayArticleSkeleton /> : undefined}
         {!loading && error ? (

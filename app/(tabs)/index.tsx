@@ -85,6 +85,7 @@ export default function HomeScreen() {
                 onScrollBeginDrag={() => setScrollActivityKey(Date.now())}
                 onMomentumScrollEnd={() => setScrollActivityKey(Date.now())}
                 scrollEventThrottle={16}
+                showsVerticalScrollIndicator={false}
             >
                 <ScreenHeader title="Word for Today" />
 

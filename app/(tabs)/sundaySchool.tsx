@@ -68,6 +68,7 @@ export default function HomeScreen() {
                     paddingTop: insets.top + 10,
                     paddingBottom: bottom + 24,
                 }}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}

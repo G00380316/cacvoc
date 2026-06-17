@@ -138,7 +138,7 @@ export function HtmlArticle({ html }: HtmlArticleProps) {
           fontWeight: "800",
           lineHeight: 36,
           marginBottom: 14,
-          marginTop: 0,
+          marginTop: 8,
         },
         p: {
           color: Palette.text,

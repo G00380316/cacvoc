@@ -12,11 +12,12 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { ThemedText } from "@/components/ThemedText";
 import { Palette } from "@/constants/Design";
 import { extractAudioUrl } from "@/constants/Reader";
 
 type AudioPlayer = {
+  currentTime: number;
+  duration: number;
   pause: () => void;
   play: () => void;
   playing: boolean;
@@ -78,6 +79,7 @@ export function FloatingReaderButton({
   const insets = useSafeAreaInsets();
   const opacity = useSharedValue(1);
   const scale = useSharedValue(1);
+  const fillProgress = useSharedValue(1);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
   const audioPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -86,13 +88,13 @@ export function FloatingReaderButton({
   const speechSegmentsRef = useRef<string[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
   const [audioAvailable, setAudioAvailable] = useState(false);
   const [speechAvailable, setSpeechAvailable] = useState(false);
   const [voice, setVoice] = useState<string | undefined>();
 
   const hasAudio = Boolean(audioUrl && audioAvailable);
   const isPlaying = hasAudio ? isAudioPlaying : isSpeaking;
-  const modeLabel = hasAudio ? "Audio" : "Read";
 
   const scheduleFade = useCallback(() => {
     if (idleTimer.current) {
@@ -101,7 +103,7 @@ export function FloatingReaderButton({
 
     opacity.value = withTiming(1, { duration: 160 });
     idleTimer.current = setTimeout(() => {
-      opacity.value = withTiming(isPlaying ? 0.78 : 0.42, { duration: 420 });
+      opacity.value = withTiming(isPlaying ? 0.62 : 0.34, { duration: 420 });
     }, 3000);
   }, [isPlaying, opacity]);
 
@@ -117,6 +119,30 @@ export function FloatingReaderButton({
   useEffect(() => {
     speechSegmentsRef.current = speechSegments;
   }, [speechSegments]);
+
+  useEffect(() => {
+    const speechProgress =
+      typeof activeSpeechIndex === "number" && speechSegments.length > 0
+        ? Math.min(1, (activeSpeechIndex + 1) / speechSegments.length)
+        : 0;
+    const audioFill = isAudioPlaying
+      ? audioProgress
+      : audioProgress > 0 && audioProgress < 1
+        ? audioProgress
+        : 1;
+    const nextFill = hasAudio ? audioFill : isSpeaking ? speechProgress : 1;
+
+    fillProgress.value = withTiming(nextFill, { duration: isPlaying ? 420 : 300 });
+  }, [
+    activeSpeechIndex,
+    audioProgress,
+    fillProgress,
+    hasAudio,
+    isAudioPlaying,
+    isPlaying,
+    isSpeaking,
+    speechSegments.length,
+  ]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -156,7 +182,13 @@ export function FloatingReaderButton({
       setAudioAvailable(true);
 
       audioPollRef.current = setInterval(() => {
+        const duration = player.duration || 0;
+        const currentTime = player.currentTime || 0;
+        const progress =
+          duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0;
+
         setIsAudioPlaying(player.playing);
+        setAudioProgress(player.playing || progress > 0 ? progress : 0);
       }, 350);
     }
 
@@ -172,6 +204,7 @@ export function FloatingReaderButton({
       audioPlayerRef.current?.remove();
       audioPlayerRef.current = null;
       setIsAudioPlaying(false);
+      setAudioProgress(0);
     };
   }, [audioUrl]);
 
@@ -308,6 +341,7 @@ export function FloatingReaderButton({
         player.pause();
         setIsAudioPlaying(false);
       } else {
+        setAudioProgress(player.duration > 0 ? player.currentTime / player.duration : 0);
         player.play();
         setIsAudioPlaying(true);
       }
@@ -340,6 +374,17 @@ export function FloatingReaderButton({
     transform: [{ scale: scale.value }],
   }));
 
+  const fillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: 58 * (1 - fillProgress.value) }],
+  }));
+  const speechProgress =
+    typeof activeSpeechIndex === "number" && speechSegments.length > 0
+      ? (activeSpeechIndex + 1) / speechSegments.length
+      : 1;
+  const iconUsesAccent =
+    (hasAudio && isAudioPlaying && audioProgress < 0.45) ||
+    (!hasAudio && isSpeaking && speechProgress < 0.45);
+
   if (!hasAudio && (!speechAvailable || speechSegments.length === 0)) {
     return null;
   }
@@ -361,12 +406,13 @@ export function FloatingReaderButton({
         onPress={toggle}
         style={({ pressed }) => [styles.button, pressed ? styles.pressed : undefined]}
       >
+        <Animated.View pointerEvents="none" style={[styles.fill, fillStyle]} />
         <Entypo
           name={isPlaying ? "controller-paus" : "controller-play"}
-          size={26}
-          color={Palette.surface}
+          size={27}
+          color={iconUsesAccent ? Palette.accent : Palette.surface}
+          style={styles.icon}
         />
-        <ThemedText style={styles.label}>{modeLabel}</ThemedText>
       </Pressable>
     </Animated.View>
   );
@@ -380,22 +426,29 @@ const styles = StyleSheet.create({
   },
   button: {
     alignItems: "center",
-    backgroundColor: Palette.accent,
+    backgroundColor: "rgba(255, 255, 255, 0.34)",
+    borderColor: "rgba(29, 111, 66, 0.2)",
     borderCurve: "continuous",
-    borderRadius: 24,
-    boxShadow: "0 10px 24px rgba(29, 111, 66, 0.28)",
-    flexDirection: "row",
-    gap: 8,
-    minHeight: 56,
-    paddingHorizontal: 18,
+    borderRadius: 29,
+    borderWidth: 1,
+    boxShadow: "0 12px 28px rgba(29, 111, 66, 0.18)",
+    height: 58,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 58,
+  },
+  fill: {
+    backgroundColor: "rgba(29, 111, 66, 0.58)",
+    bottom: 0,
+    height: 58,
+    left: 0,
+    position: "absolute",
+    right: 0,
   },
   pressed: {
-    opacity: 0.84,
+    opacity: 0.72,
   },
-  label: {
-    color: Palette.surface,
-    fontSize: 14,
-    fontWeight: "800",
-    lineHeight: 18,
+  icon: {
+    zIndex: 1,
   },
 });

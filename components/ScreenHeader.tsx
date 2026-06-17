@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.background,
     paddingHorizontal: 24,
     paddingBottom: 12,
+    paddingTop: 8,
   },
   copy: {
     flex: 1,

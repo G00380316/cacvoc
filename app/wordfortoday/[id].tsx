@@ -62,6 +62,7 @@ export default function WordForTodayDetailScreen() {
         onScrollBeginDrag={() => setScrollActivityKey(Date.now())}
         onMomentumScrollEnd={() => setScrollActivityKey(Date.now())}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       >
         {loading ? <ArticleSkeleton /> : undefined}
         {!loading && error ? (
