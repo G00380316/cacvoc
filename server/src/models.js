@@ -23,6 +23,7 @@ const SundaySchoolSchema = new Schema(
       unique: true,
       sparse: true,
     },
+    audio: String,
     text: String,
   },
   { timestamps: true }

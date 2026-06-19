@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
+import { FloatingReaderButton } from "@/components/FloatingReaderButton";
 import { HtmlArticle } from "@/components/HtmlArticle";
 import { AnimatedContent, SundayArticleSkeleton } from "@/components/LoadingStates";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -11,6 +12,7 @@ import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { fetchFirstJson } from "@/constants/Api";
 import type { SundaySchool } from "@/constants/ContentTypes";
 import { Palette } from "@/constants/Design";
+import { buildSundaySchoolSpeechSegments } from "@/constants/Reader";
 
 type SundaySchoolResponse = {
     response?: {
@@ -22,9 +24,12 @@ type SundaySchoolResponse = {
 export default function HomeScreen() {
     const [text, setText] = useState("");
     const [title, setTitle] = useState("");
+    const [audio, setAudio] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [activeSpeechIndex, setActiveSpeechIndex] = useState<number | null>(null);
+    const [scrollActivityKey, setScrollActivityKey] = useState(0);
 
     const bottom = useBottomTabOverflow();
     const insets = useSafeAreaInsets();
@@ -41,6 +46,7 @@ export default function HomeScreen() {
             if (sundaySchool) {
                 setText(sundaySchool.text ?? "");
                 setTitle(sundaySchool.title ?? "");
+                setAudio(sundaySchool.audio ?? null);
             }
             setError("");
         } catch (loadError) {
@@ -68,6 +74,9 @@ export default function HomeScreen() {
                     paddingTop: insets.top + 10,
                     paddingBottom: bottom + 24,
                 }}
+                onScrollBeginDrag={() => setScrollActivityKey(Date.now())}
+                onMomentumScrollEnd={() => setScrollActivityKey(Date.now())}
+                scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
@@ -96,6 +105,19 @@ export default function HomeScreen() {
                     )}
                 </ThemedView>
             </Animated.ScrollView>
+            {!loading && !error ? (
+                <FloatingReaderButton
+                    audio={audio}
+                    speechSegments={buildSundaySchoolSpeechSegments({
+                        title,
+                        text,
+                    })}
+                    activeSpeechIndex={activeSpeechIndex}
+                    onActiveSpeechIndexChange={setActiveSpeechIndex}
+                    bottomOffset={bottom}
+                    activityKey={scrollActivityKey}
+                />
+            ) : undefined}
         </ThemedView>
     );
 }

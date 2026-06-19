@@ -1,6 +1,8 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 
+const AUDIO_FILE_PATTERN = /\.(mp3|m4a|aac|wav|ogg)(\?.*)?$/i;
+
 export async function scrapeWordForToday(targetUrl) {
   const { data } = await axios.get(targetUrl);
   const $ = cheerio.load(data);
@@ -38,6 +40,7 @@ export async function scrapeSundaySchool(targetUrl) {
   const { data } = await axios.get(targetUrl);
   const $ = cheerio.load(data);
 
+  let audio = "";
   let text = "";
   let title = "";
 
@@ -56,5 +59,19 @@ export async function scrapeSundaySchool(targetUrl) {
     }
   );
 
-  return { text, title };
+  $("audio, .wp-block-audio, a[href], source[src]").each((idx, el) => {
+    if (audio) {
+      return;
+    }
+
+    const href = $(el).attr("href");
+    const src = $(el).attr("src") ?? $(el).find("source[src]").first().attr("src");
+    const candidate = href ?? src;
+
+    if (!candidate || AUDIO_FILE_PATTERN.test(candidate)) {
+      audio = `${$.html(el)}\n`;
+    }
+  });
+
+  return { text, title, audio };
 }

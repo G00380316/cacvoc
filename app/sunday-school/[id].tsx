@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import Animated from "react-native-reanimated";
 
+import { FloatingReaderButton } from "@/components/FloatingReaderButton";
 import { HtmlArticle } from "@/components/HtmlArticle";
 import { AnimatedContent, SundayArticleSkeleton } from "@/components/LoadingStates";
 import { ThemedText } from "@/components/ThemedText";
@@ -10,6 +11,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { fetchFirstJson } from "@/constants/Api";
 import type { SundaySchool } from "@/constants/ContentTypes";
 import { Palette } from "@/constants/Design";
+import { buildSundaySchoolSpeechSegments } from "@/constants/Reader";
 
 type SundaySchoolDetailResponse = {
   sundaySchool?: SundaySchool;
@@ -20,6 +22,8 @@ export default function SundaySchoolDetailScreen() {
   const [item, setItem] = useState<SundaySchool | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeSpeechIndex, setActiveSpeechIndex] = useState<number | null>(null);
+  const [scrollActivityKey, setScrollActivityKey] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -55,6 +59,9 @@ export default function SundaySchoolDetailScreen() {
       <Animated.ScrollView
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
+        onScrollBeginDrag={() => setScrollActivityKey(Date.now())}
+        onMomentumScrollEnd={() => setScrollActivityKey(Date.now())}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
         {loading ? <SundayArticleSkeleton /> : undefined}
@@ -74,6 +81,16 @@ export default function SundaySchoolDetailScreen() {
           </AnimatedContent>
         ) : undefined}
       </Animated.ScrollView>
+      {!loading && !error && item ? (
+        <FloatingReaderButton
+          audio={item.audio}
+          speechSegments={buildSundaySchoolSpeechSegments(item)}
+          activeSpeechIndex={activeSpeechIndex}
+          onActiveSpeechIndexChange={setActiveSpeechIndex}
+          bottomOffset={0}
+          activityKey={scrollActivityKey}
+        />
+      ) : undefined}
     </ThemedView>
   );
 }

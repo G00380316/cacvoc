@@ -13,7 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Palette } from "@/constants/Design";
-import { extractAudioUrl } from "@/constants/Reader";
+import { extractAudioUrl, prepareTextForSpeech } from "@/constants/Reader";
 
 type AudioPlayer = {
   currentTime: number;
@@ -22,6 +22,7 @@ type AudioPlayer = {
   play: () => void;
   playing: boolean;
   remove: () => void;
+  seekTo?: (seconds: number) => Promise<void>;
 };
 
 type AudioModule = {
@@ -38,6 +39,7 @@ type AudioModule = {
 type SpeechVoice = {
   identifier?: string;
   language?: string;
+  name?: string;
   quality?: string;
 };
 
@@ -67,6 +69,72 @@ type FloatingReaderButtonProps = {
   activityKey?: number;
 };
 
+type ActiveReader = {
+  id: symbol;
+  stop: () => Promise<void> | void;
+};
+
+let activeReader: ActiveReader | null = null;
+
+async function stopOtherReaders(id: symbol) {
+  if (activeReader && activeReader.id !== id) {
+    const stop = activeReader.stop;
+    activeReader = null;
+    await stop();
+  }
+}
+
+function markActiveReader(id: symbol, stop: ActiveReader["stop"]) {
+  activeReader = { id, stop };
+}
+
+function clearActiveReader(id: symbol) {
+  if (activeReader?.id === id) {
+    activeReader = null;
+  }
+}
+
+const PREFERRED_MALE_VOICE_NAMES = [
+  "daniel",
+  "arthur",
+  "oliver",
+  "george",
+  "jamie",
+  "thomas",
+  "fred",
+  "eddy",
+  "reed",
+  "sandy",
+  "aaron",
+  "nathan",
+];
+
+function scoreVoice(voice: SpeechVoice) {
+  const language = voice.language?.toLowerCase() ?? "";
+  const label = `${voice.name ?? ""} ${voice.identifier ?? ""}`.toLowerCase();
+  const isEnglish = language.startsWith("en");
+  const isBritish = language.startsWith("en-gb");
+  const isEnhanced = voice.quality === "Enhanced";
+  const maleNameIndex = PREFERRED_MALE_VOICE_NAMES.findIndex((name) =>
+    label.includes(name)
+  );
+  const maleVoiceScore =
+    maleNameIndex >= 0 ? 100 - maleNameIndex * 2 : 0;
+
+  return (
+    (isEnglish ? 30 : 0) +
+    (isBritish ? 24 : 0) +
+    (isEnhanced ? 18 : 0) +
+    maleVoiceScore
+  );
+}
+
+function selectNarratorVoice(voices: SpeechVoice[]) {
+  return [...voices]
+    .filter((voice) => voice.language?.toLowerCase().startsWith("en"))
+    .sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+}
+
 export function FloatingReaderButton({
   audio,
   speechSegments,
@@ -83,9 +151,13 @@ export function FloatingReaderButton({
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
   const audioPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const readerIdRef = useRef(Symbol("floating-reader"));
   const speechRef = useRef<SpeechModule | null>(null);
   const speechIndexRef = useRef(0);
+  const speechRunRef = useRef(0);
   const speechSegmentsRef = useRef<string[]>([]);
+  const lastTapRef = useRef(0);
+  const toggleLockRef = useRef(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
@@ -174,6 +246,10 @@ export function FloatingReaderButton({
         })
         .catch(console.warn);
 
+      audioPlayerRef.current?.pause();
+      audioPlayerRef.current?.remove();
+      audioPlayerRef.current = null;
+
       const player = audioModule.createAudioPlayer(
         { uri: audioUrl },
         { updateInterval: 350 }
@@ -188,7 +264,11 @@ export function FloatingReaderButton({
           duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0;
 
         setIsAudioPlaying(player.playing);
-        setAudioProgress(player.playing || progress > 0 ? progress : 0);
+        setAudioProgress(progress >= 0.995 ? 1 : player.playing || progress > 0 ? progress : 0);
+
+        if (!player.playing && progress >= 0.995) {
+          clearActiveReader(readerIdRef.current);
+        }
       }, 350);
     }
 
@@ -239,18 +319,7 @@ export function FloatingReaderButton({
       speechModule
         .getAvailableVoicesAsync()
         .then((voices) => {
-          const preferredVoice = voices.find(
-            (availableVoice) =>
-              availableVoice.language?.toLowerCase().startsWith("en-gb") &&
-              availableVoice.quality === "Enhanced"
-          );
-          const fallbackVoice =
-            preferredVoice ??
-            voices.find((availableVoice) =>
-              availableVoice.language?.toLowerCase().startsWith("en")
-            );
-
-          setVoice(fallbackVoice?.identifier);
+          setVoice(selectNarratorVoice(voices)?.identifier);
         })
         .catch(() => undefined);
     }
@@ -264,15 +333,43 @@ export function FloatingReaderButton({
   }, []);
 
   useEffect(() => {
+    const readerId = readerIdRef.current;
+
     return () => {
+      speechRunRef.current += 1;
       speechRef.current?.stop().catch(() => undefined);
       audioPlayerRef.current?.pause();
+      clearActiveReader(readerId);
       onActiveSpeechIndexChange(null);
     };
   }, [onActiveSpeechIndexChange]);
 
+  const stopReader = useCallback(
+    async (reset = false) => {
+      speechRunRef.current += 1;
+      await speechRef.current?.stop();
+      audioPlayerRef.current?.pause();
+
+      if (reset) {
+        await audioPlayerRef.current?.seekTo?.(0);
+        speechIndexRef.current = 0;
+        setAudioProgress(0);
+      }
+
+      setIsSpeaking(false);
+      setIsAudioPlaying(false);
+      clearActiveReader(readerIdRef.current);
+      onActiveSpeechIndexChange(null);
+    },
+    [onActiveSpeechIndexChange]
+  );
+
   const speakAtIndex = useCallback(
-    (index: number) => {
+    (index: number, runId: number) => {
+      if (runId !== speechRunRef.current) {
+        return;
+      }
+
       const segment = speechSegmentsRef.current[index];
 
       if (!segment) {
@@ -284,19 +381,27 @@ export function FloatingReaderButton({
 
       speechIndexRef.current = index;
       onActiveSpeechIndexChange(index);
-      speechRef.current?.speak(segment, {
+      speechRef.current?.speak(prepareTextForSpeech(segment), {
         language: "en-GB",
         voice,
-        pitch: 1.02,
-        rate: 0.86,
-        onDone: () => speakAtIndex(index + 1),
+        pitch: 0.96,
+        rate: 0.68,
+        onDone: () => {
+          if (runId === speechRunRef.current) {
+            speakAtIndex(index + 1, runId);
+          }
+        },
         onStopped: () => {
-          setIsSpeaking(false);
-          onActiveSpeechIndexChange(null);
+          if (runId === speechRunRef.current) {
+            setIsSpeaking(false);
+            onActiveSpeechIndexChange(null);
+          }
         },
         onError: () => {
-          setIsSpeaking(false);
-          onActiveSpeechIndexChange(null);
+          if (runId === speechRunRef.current) {
+            setIsSpeaking(false);
+            onActiveSpeechIndexChange(null);
+          }
         },
       });
     },
@@ -308,64 +413,114 @@ export function FloatingReaderButton({
       return;
     }
 
+    speechRunRef.current += 1;
+    const runId = speechRunRef.current;
+    await stopOtherReaders(readerIdRef.current);
+    audioPlayerRef.current?.pause();
+    setIsAudioPlaying(false);
     await speechRef.current.stop();
+    markActiveReader(readerIdRef.current, () => stopReader());
     setIsSpeaking(true);
-    speakAtIndex(activeSpeechIndex ?? speechIndexRef.current);
-  }, [activeSpeechIndex, speakAtIndex]);
+    speakAtIndex(activeSpeechIndex ?? speechIndexRef.current, runId);
+  }, [activeSpeechIndex, speakAtIndex, stopReader]);
 
   const stopSpeech = useCallback(async () => {
+    speechRunRef.current += 1;
     await speechRef.current?.stop();
     setIsSpeaking(false);
+    clearActiveReader(readerIdRef.current);
     onActiveSpeechIndexChange(null);
   }, [onActiveSpeechIndexChange]);
 
+  const resetPlayback = useCallback(async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await stopOtherReaders(readerIdRef.current);
+    await stopReader(true);
+  }, [stopReader]);
+
   const toggle = useCallback(async () => {
+    const now = Date.now();
+    const isDoubleTap = now - lastTapRef.current < 320;
+    lastTapRef.current = now;
+
+    if (isDoubleTap) {
+      await resetPlayback();
+      return;
+    }
+
+    if (toggleLockRef.current) {
+      return;
+    }
+
+    toggleLockRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     scheduleFade();
     scale.value = withSpring(0.94, { damping: 12 }, () => {
       scale.value = withSpring(1);
     });
 
-    if (hasAudio) {
-      await speechRef.current?.stop();
-      setIsSpeaking(false);
-      onActiveSpeechIndexChange(null);
+    try {
+      if (hasAudio) {
+        speechRunRef.current += 1;
+        await stopOtherReaders(readerIdRef.current);
+        await speechRef.current?.stop();
+        setIsSpeaking(false);
+        onActiveSpeechIndexChange(null);
 
-      const player = audioPlayerRef.current;
+        const player = audioPlayerRef.current;
 
-      if (!player) {
+        if (!player) {
+          return;
+        }
+
+        if (isAudioPlaying) {
+          player.pause();
+          setIsAudioPlaying(false);
+          clearActiveReader(readerIdRef.current);
+        } else {
+          const isFinished =
+            player.duration > 0 &&
+            player.currentTime / player.duration >= 0.995;
+
+          if (isFinished && player.seekTo) {
+            await player.seekTo(0);
+            setAudioProgress(0);
+          } else {
+            setAudioProgress(
+              player.duration > 0 ? player.currentTime / player.duration : 0
+            );
+          }
+
+          player.play();
+          markActiveReader(readerIdRef.current, () => stopReader());
+          setIsAudioPlaying(true);
+        }
         return;
       }
 
-      if (isAudioPlaying) {
-        player.pause();
-        setIsAudioPlaying(false);
-      } else {
-        setAudioProgress(player.duration > 0 ? player.currentTime / player.duration : 0);
-        player.play();
-        setIsAudioPlaying(true);
+      if (!speechAvailable) {
+        return;
       }
-      return;
-    }
 
-    if (!speechAvailable) {
-      return;
-    }
-
-    if (isSpeaking) {
-      await stopSpeech();
-    } else {
-      await startSpeech();
+      if (isSpeaking) {
+        await stopSpeech();
+      } else {
+        await startSpeech();
+      }
+    } finally {
+      toggleLockRef.current = false;
     }
   }, [
     hasAudio,
     isAudioPlaying,
     isSpeaking,
     onActiveSpeechIndexChange,
+    resetPlayback,
     scale,
     scheduleFade,
     startSpeech,
     speechAvailable,
+    stopReader,
     stopSpeech,
   ]);
 

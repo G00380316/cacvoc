@@ -10,6 +10,7 @@ export type WordForToday = {
 
 export type SundaySchool = {
   _id?: string;
+  audio?: string | null;
   text?: string;
   title?: string;
 };
