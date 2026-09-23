@@ -11,7 +11,8 @@ import { WordForTodayArticle } from "@/components/WordForTodayArticle";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { fetchFirstJson } from "@/constants/Api";
 import type { WordForToday } from "@/constants/ContentTypes";
-import { Palette } from "@/constants/Design";
+import type { AppPalette } from "@/constants/Design";
+import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
 import { buildWordForTodaySpeechSegments } from "@/constants/Reader";
 
 type WordForTodayResponse = {
@@ -20,6 +21,8 @@ type WordForTodayResponse = {
 };
 
 export default function HomeScreen() {
+    const styles = useThemedStyles(createStyles);
+    const palette = usePalette();
     const [text, setText] = useState("");
     const [title, setTitle] = useState("");
     const [date, setDate] = useState("");
@@ -69,7 +72,7 @@ export default function HomeScreen() {
     }, [load]);
 
     return (
-        <ThemedView lightColor={Palette.background} style={styles.container}>
+        <ThemedView lightColor={palette.background} style={styles.container}>
             <Animated.ScrollView
                 contentContainerStyle={{
                     paddingTop: insets.top + 10,
@@ -79,7 +82,7 @@ export default function HomeScreen() {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={refresh}
-                        tintColor={Palette.accent}
+                        tintColor={palette.accent}
                     />
                 }
                 onScrollBeginDrag={() => setScrollActivityKey(Date.now())}
@@ -128,28 +131,29 @@ export default function HomeScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    stepContainer: {
-        gap: 8,
-        marginBottom: 8,
-    },
-    container: {
-        flex: 1,
-    },
-    header: {
-        overflow: "hidden",
-    },
-    content: {
-        flex: 1,
-        backgroundColor: Palette.background,
-        paddingHorizontal: 24,
-        paddingBottom: 32,
-        gap: 16,
-        overflow: "hidden",
-    },
-    error: {
-        color: Palette.danger,
-        fontSize: 17,
-        lineHeight: 24,
-    },
-});
+const createStyles = (palette: AppPalette) =>
+    StyleSheet.create({
+        stepContainer: {
+            gap: 8,
+            marginBottom: 8,
+        },
+        container: {
+            flex: 1,
+        },
+        header: {
+            overflow: "hidden",
+        },
+        content: {
+            flex: 1,
+            backgroundColor: palette.background,
+            paddingHorizontal: 24,
+            paddingBottom: 32,
+            gap: 16,
+            overflow: "hidden",
+        },
+        error: {
+            color: palette.danger,
+            fontSize: 17,
+            lineHeight: 24,
+        },
+    });

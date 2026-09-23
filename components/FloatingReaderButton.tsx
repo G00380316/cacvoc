@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { Palette } from "@/constants/Design";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import { extractAudioUrl, prepareTextForSpeech } from "@/constants/Reader";
 
 type AudioPlayer = {
@@ -145,6 +145,8 @@ export function FloatingReaderButton({
 }: FloatingReaderButtonProps) {
   const audioUrl = useMemo(() => extractAudioUrl(audio), [audio]);
   const insets = useSafeAreaInsets();
+  const { scheme, palette } = useAppTheme();
+  const styles = stylesByScheme[scheme];
   const opacity = useSharedValue(1);
   const scale = useSharedValue(1);
   const fillProgress = useSharedValue(1);
@@ -565,7 +567,7 @@ export function FloatingReaderButton({
           <Entypo
             name={isPlaying ? "controller-paus" : "controller-play"}
             size={27}
-            color={iconUsesAccent ? Palette.accent : Palette.surface}
+            color={iconUsesAccent ? palette.accent : palette.onAccent}
             style={styles.icon}
           />
         </Pressable>
@@ -574,37 +576,65 @@ export function FloatingReaderButton({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    right: 18,
-    zIndex: 20,
+type ReaderChrome = {
+  buttonBackground: string;
+  buttonBorder: string;
+  buttonShadow: string;
+  fill: string;
+};
+
+const READER_CHROME: Record<"light" | "dark", ReaderChrome> = {
+  light: {
+    buttonBackground: "rgba(255, 255, 255, 0.34)",
+    buttonBorder: "rgba(29, 111, 66, 0.2)",
+    buttonShadow: "0 12px 28px rgba(29, 111, 66, 0.18)",
+    fill: "rgba(29, 111, 66, 0.58)",
   },
-  button: {
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.34)",
-    borderColor: "rgba(29, 111, 66, 0.2)",
-    borderCurve: "continuous",
-    borderRadius: 29,
-    borderWidth: 1,
-    boxShadow: "0 12px 28px rgba(29, 111, 66, 0.18)",
-    height: 58,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: 58,
+  dark: {
+    buttonBackground: "rgba(26, 32, 27, 0.55)",
+    buttonBorder: "rgba(92, 191, 133, 0.28)",
+    buttonShadow: "0 12px 28px rgba(0, 0, 0, 0.45)",
+    fill: "rgba(92, 191, 133, 0.88)",
   },
-  fill: {
-    backgroundColor: "rgba(29, 111, 66, 0.58)",
-    bottom: 0,
-    height: 58,
-    left: 0,
-    position: "absolute",
-    right: 0,
-  },
-  pressed: {
-    opacity: 0.72,
-  },
-  icon: {
-    zIndex: 1,
-  },
-});
+};
+
+const createStyles = (chrome: ReaderChrome) =>
+  StyleSheet.create({
+    container: {
+      position: "absolute",
+      right: 18,
+      zIndex: 20,
+    },
+    button: {
+      alignItems: "center",
+      backgroundColor: chrome.buttonBackground,
+      borderColor: chrome.buttonBorder,
+      borderCurve: "continuous",
+      borderRadius: 29,
+      borderWidth: 1,
+      boxShadow: chrome.buttonShadow,
+      height: 58,
+      justifyContent: "center",
+      overflow: "hidden",
+      width: 58,
+    },
+    fill: {
+      backgroundColor: chrome.fill,
+      bottom: 0,
+      height: 58,
+      left: 0,
+      position: "absolute",
+      right: 0,
+    },
+    pressed: {
+      opacity: 0.72,
+    },
+    icon: {
+      zIndex: 1,
+    },
+  });
+
+const stylesByScheme = {
+  light: createStyles(READER_CHROME.light),
+  dark: createStyles(READER_CHROME.dark),
+};

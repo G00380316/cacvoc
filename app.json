@@ -38,7 +38,33 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Cacvoc uses your location to find Christ Apostolic Church assemblies near you.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1d6f42"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

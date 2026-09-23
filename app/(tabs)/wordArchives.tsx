@@ -11,13 +11,16 @@ import { ThemedView } from "@/components/ThemedView";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { fetchFirstJson } from "@/constants/Api";
 import type { WordForToday } from "@/constants/ContentTypes";
-import { Palette } from "@/constants/Design";
+import type { AppPalette } from "@/constants/Design";
+import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
 
 type WordForTodayListResponse = {
     wordfortodays?: WordForToday[];
 };
 
 export default function WordArchivesScreen() {
+    const styles = useThemedStyles(createStyles);
+    const palette = usePalette();
     const [items, setItems] = useState<WordForToday[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +55,7 @@ export default function WordArchivesScreen() {
     }, [load]);
 
     return (
-        <ThemedView lightColor={Palette.background} style={styles.container}>
+        <ThemedView lightColor={palette.background} style={styles.container}>
             <Animated.ScrollView
                 contentContainerStyle={{
                     paddingTop: insets.top + 10,
@@ -63,7 +66,7 @@ export default function WordArchivesScreen() {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={refresh}
-                        tintColor={Palette.accent}
+                        tintColor={palette.accent}
                     />
                 }
             >
@@ -87,19 +90,20 @@ export default function WordArchivesScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    body: {
-        backgroundColor: Palette.background,
-        paddingHorizontal: 24,
-        paddingBottom: 32,
-        gap: 16,
-    },
-    error: {
-        color: Palette.danger,
-        fontSize: 17,
-        lineHeight: 24,
-    },
-});
+const createStyles = (palette: AppPalette) =>
+    StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        body: {
+            backgroundColor: palette.background,
+            paddingHorizontal: 24,
+            paddingBottom: 32,
+            gap: 16,
+        },
+        error: {
+            color: palette.danger,
+            fontSize: 17,
+            lineHeight: 24,
+        },
+    });

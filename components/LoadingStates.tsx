@@ -10,7 +10,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ThemedView } from "@/components/ThemedView";
-import { Palette } from "@/constants/Design";
+import type { AppPalette } from "@/constants/Design";
+import { useThemedStyles } from "@/contexts/ThemeContext";
 
 type AnimatedContentProps = {
   children: ReactNode;
@@ -35,6 +36,7 @@ function SkeletonLine({
   width?: number | `${number}%`;
   height?: number;
 }) {
+  const styles = useThemedStyles(createStyles);
   const opacity = useSharedValue(0.62);
 
   useEffect(() => {
@@ -53,6 +55,8 @@ function SkeletonLine({
 }
 
 export function ArticleSkeleton() {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <ThemedView style={styles.articleSkeleton}>
       <SkeletonLine width="82%" height={34} />
@@ -72,6 +76,8 @@ export function ArticleSkeleton() {
 }
 
 export function SundayArticleSkeleton() {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <ThemedView style={styles.articleSkeleton}>
       <SkeletonLine width="74%" height={34} />
@@ -86,6 +92,8 @@ export function SundayArticleSkeleton() {
 }
 
 export function ArchiveSkeleton() {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <ThemedView style={styles.archiveSkeleton}>
       {Array.from({ length: 7 }).map((_, index) => (
@@ -98,35 +106,36 @@ export function ArchiveSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  skeletonLine: {
-    backgroundColor: Palette.border,
-    borderCurve: "continuous",
-    borderRadius: 8,
-  },
-  articleSkeleton: {
-    backgroundColor: "transparent",
-    gap: 14,
-  },
-  metaSkeleton: {
-    backgroundColor: "transparent",
-    gap: 6,
-    marginBottom: 12,
-  },
-  archiveSkeleton: {
-    backgroundColor: "transparent",
-    gap: 12,
-  },
-  archiveRow: {
-    minHeight: 72,
-    justifyContent: "center",
-    backgroundColor: Palette.surface,
-    borderColor: Palette.border,
-    borderCurve: "continuous",
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-  },
-});
+const createStyles = (palette: AppPalette) =>
+  StyleSheet.create({
+    skeletonLine: {
+      backgroundColor: palette.border,
+      borderCurve: "continuous",
+      borderRadius: 8,
+    },
+    articleSkeleton: {
+      backgroundColor: "transparent",
+      gap: 14,
+    },
+    metaSkeleton: {
+      backgroundColor: "transparent",
+      gap: 6,
+      marginBottom: 12,
+    },
+    archiveSkeleton: {
+      backgroundColor: "transparent",
+      gap: 12,
+    },
+    archiveRow: {
+      minHeight: 72,
+      justifyContent: "center",
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderCurve: "continuous",
+      borderRadius: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      gap: 8,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+    },
+  });

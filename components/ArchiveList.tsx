@@ -5,7 +5,8 @@ import Animated, { FadeInUp, LinearTransition } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { Palette } from "@/constants/Design";
+import type { AppPalette } from "@/constants/Design";
+import { useAppTheme, useThemedStyles } from "@/contexts/ThemeContext";
 import { stripHtml } from "@/constants/Html";
 
 export type ArchiveItem = {
@@ -21,6 +22,9 @@ type ArchiveListProps = {
 };
 
 export function ArchiveList({ items, routePrefix, showDate }: ArchiveListProps) {
+  const styles = useThemedStyles(createStyles);
+  const { scheme } = useAppTheme();
+
   return (
     <ThemedView style={styles.list}>
       {items.map((item, index) => {
@@ -44,6 +48,7 @@ export function ArchiveList({ items, routePrefix, showDate }: ArchiveListProps) 
               }}
               style={({ pressed }) => [
                 styles.row,
+                scheme === "dark" ? styles.rowDark : undefined,
                 pressed ? styles.rowPressed : undefined,
               ]}
             >
@@ -59,37 +64,41 @@ export function ArchiveList({ items, routePrefix, showDate }: ArchiveListProps) 
   );
 }
 
-const styles = StyleSheet.create({
-  list: {
-    gap: 12,
-    backgroundColor: "transparent",
-  },
-  row: {
-    minHeight: 72,
-    justifyContent: "center",
-    backgroundColor: Palette.surface,
-    borderColor: Palette.border,
-    borderCurve: "continuous",
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    boxShadow: "0 1px 3px rgba(24, 34, 27, 0.06)",
-  },
-  rowPressed: {
-    opacity: 0.68,
-  },
-  rowText: {
-    color: Palette.text,
-    fontSize: 18,
-    fontWeight: "700",
-    lineHeight: 25,
-  },
-  rowDate: {
-    color: Palette.accent,
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 18,
-    marginBottom: 4,
-  },
-});
+const createStyles = (palette: AppPalette) =>
+  StyleSheet.create({
+    list: {
+      gap: 12,
+      backgroundColor: "transparent",
+    },
+    row: {
+      minHeight: 72,
+      justifyContent: "center",
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderCurve: "continuous",
+      borderRadius: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      boxShadow: "0 1px 3px rgba(24, 34, 27, 0.06)",
+    },
+    rowDark: {
+      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.32)",
+    },
+    rowPressed: {
+      opacity: 0.68,
+    },
+    rowText: {
+      color: palette.text,
+      fontSize: 18,
+      fontWeight: "700",
+      lineHeight: 25,
+    },
+    rowDate: {
+      color: palette.accent,
+      fontSize: 13,
+      fontWeight: "700",
+      lineHeight: 18,
+      marginBottom: 4,
+    },
+  });

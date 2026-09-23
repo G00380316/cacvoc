@@ -10,7 +10,8 @@ import { ThemedView } from "@/components/ThemedView";
 import { WordForTodayArticle } from "@/components/WordForTodayArticle";
 import { fetchFirstJson } from "@/constants/Api";
 import type { WordForToday } from "@/constants/ContentTypes";
-import { Palette } from "@/constants/Design";
+import type { AppPalette } from "@/constants/Design";
+import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
 import { buildWordForTodaySpeechSegments } from "@/constants/Reader";
 
 type WordForTodayDetailResponse = {
@@ -18,6 +19,8 @@ type WordForTodayDetailResponse = {
 };
 
 export default function WordForTodayDetailScreen() {
+  const styles = useThemedStyles(createStyles);
+  const palette = usePalette();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<WordForToday | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,12 +51,12 @@ export default function WordForTodayDetailScreen() {
   }, [id]);
 
   return (
-    <ThemedView lightColor={Palette.background} style={styles.container}>
+    <ThemedView lightColor={palette.background} style={styles.container}>
       <Stack.Screen
         options={{
           title: "Word for Today",
-          headerStyle: { backgroundColor: Palette.background },
-          headerTintColor: Palette.accent,
+          headerStyle: { backgroundColor: palette.background },
+          headerTintColor: palette.accent,
         }}
       />
       <Animated.ScrollView
@@ -97,20 +100,21 @@ export default function WordForTodayDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    backgroundColor: Palette.background,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 24,
-    gap: 16,
-  },
-  error: {
-    color: Palette.danger,
-    fontSize: 17,
-    lineHeight: 24,
-  },
-});
+const createStyles = (palette: AppPalette) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    content: {
+      backgroundColor: palette.background,
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+      paddingTop: 24,
+      gap: 16,
+    },
+    error: {
+      color: palette.danger,
+      fontSize: 17,
+      lineHeight: 24,
+    },
+  });

@@ -10,7 +10,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { fetchFirstJson } from "@/constants/Api";
 import type { SundaySchool } from "@/constants/ContentTypes";
-import { Palette } from "@/constants/Design";
+import type { AppPalette } from "@/constants/Design";
+import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
 import { buildSundaySchoolSpeechSegments } from "@/constants/Reader";
 
 type SundaySchoolDetailResponse = {
@@ -18,6 +19,8 @@ type SundaySchoolDetailResponse = {
 };
 
 export default function SundaySchoolDetailScreen() {
+  const styles = useThemedStyles(createStyles);
+  const palette = usePalette();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<SundaySchool | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,12 +51,12 @@ export default function SundaySchoolDetailScreen() {
   }, [id]);
 
   return (
-    <ThemedView lightColor={Palette.background} style={styles.container}>
+    <ThemedView lightColor={palette.background} style={styles.container}>
       <Stack.Screen
         options={{
           title: "Sunday School",
-          headerStyle: { backgroundColor: Palette.background },
-          headerTintColor: Palette.accent,
+          headerStyle: { backgroundColor: palette.background },
+          headerTintColor: palette.accent,
         }}
       />
       <Animated.ScrollView
@@ -95,20 +98,21 @@ export default function SundaySchoolDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    backgroundColor: Palette.background,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 24,
-    gap: 16,
-  },
-  error: {
-    color: Palette.danger,
-    fontSize: 17,
-    lineHeight: 24,
-  },
-});
+const createStyles = (palette: AppPalette) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    content: {
+      backgroundColor: palette.background,
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+      paddingTop: 24,
+      gap: 16,
+    },
+    error: {
+      color: palette.danger,
+      fontSize: 17,
+      lineHeight: 24,
+    },
+  });

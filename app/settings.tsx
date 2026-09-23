@@ -1,0 +1,431 @@
+import DateTimePicker, {
+  DateTimePickerAndroid,
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
+
+import type { AppPalette } from "@/constants/Design";
+import { formatChurchLocation } from "@/constants/ChurchTypes";
+import {
+  applyReminderSchedule,
+  DEFAULT_REMINDER_SETTINGS,
+  ensureNotificationPermission,
+  formatReminderTime,
+  loadReminderSettings,
+  REMINDERS,
+  saveReminderSettings,
+  type ReminderId,
+  type ReminderSettings,
+} from "@/constants/Reminders";
+import { useAuth } from "@/contexts/AuthContext";
+import { useChurch } from "@/contexts/ChurchContext";
+import {
+  useAppTheme,
+  useThemedStyles,
+  type ThemePreference,
+} from "@/contexts/ThemeContext";
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
+export default function SettingsScreen() {
+  const styles = useThemedStyles(createStyles);
+  const { preference, setPreference, palette, scheme } = useAppTheme();
+  const { admin, signOut } = useAuth();
+  const { church } = useChurch();
+  const [reminders, setReminders] = useState<ReminderSettings>(DEFAULT_REMINDER_SETTINGS);
+  const saveQueue = useRef(Promise.resolve());
+
+  useEffect(() => {
+    loadReminderSettings().then(setReminders);
+  }, []);
+
+  // Persist and reschedule in order so quick toggles can't race each other.
+  const updateReminders = useCallback((next: ReminderSettings) => {
+    setReminders(next);
+    saveQueue.current = saveQueue.current
+      .then(() => saveReminderSettings(next))
+      .then(() => applyReminderSchedule(next))
+      .catch(console.warn);
+  }, []);
+
+  const toggleNotifications = useCallback(
+    async (enabled: boolean) => {
+      let permitted = true;
+
+      if (enabled) {
+        try {
+          permitted = await ensureNotificationPermission();
+        } catch (error) {
+          console.warn(error);
+          Alert.alert("Couldn't turn on reminders", "Please try again.");
+          return;
+        }
+      }
+
+      if (!permitted) {
+        Alert.alert(
+          "Notifications are off",
+          "Allow notifications for Cacvoc in Settings to get reminders.",
+          [
+            { text: "Not now", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+
+      updateReminders({ ...reminders, enabled });
+    },
+    [reminders, updateReminders]
+  );
+
+  const updateReminder = useCallback(
+    (id: ReminderId, patch: Partial<ReminderSettings["reminders"][ReminderId]>) => {
+      updateReminders({
+        ...reminders,
+        reminders: { ...reminders.reminders, [id]: { ...reminders.reminders[id], ...patch } },
+      });
+    },
+    [reminders, updateReminders]
+  );
+
+  const confirmSignOut = useCallback(() => {
+    Alert.alert("Sign out?", "The Editor tab will be hidden until you sign in again.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign out", style: "destructive", onPress: () => signOut() },
+    ]);
+  }, [signOut]);
+
+  return (
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+    >
+      <Section title="General">
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Appearance</Text>
+        </View>
+        <View style={styles.segmented}>
+          {THEME_OPTIONS.map((option) => {
+            const selected = preference === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setPreference(option.value);
+                }}
+                style={[styles.segment, selected ? styles.segmentSelected : undefined]}
+              >
+                <Text
+                  style={[styles.segmentText, selected ? styles.segmentTextSelected : undefined]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Section>
+
+      <Section
+        title="Notifications"
+        footer="Daily reminders arrive at the times you choose."
+      >
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Reminders</Text>
+          <Switch
+            value={reminders.enabled}
+            onValueChange={toggleNotifications}
+            trackColor={{ true: palette.accent }}
+          />
+        </View>
+        {reminders.enabled
+          ? REMINDERS.map((reminder) => {
+              const setting = reminders.reminders[reminder.id];
+              return (
+                <View key={reminder.id} style={[styles.row, styles.rowDivider]}>
+                  <Switch
+                    value={setting.enabled}
+                    onValueChange={(enabled) => updateReminder(reminder.id, { enabled })}
+                    trackColor={{ true: palette.accent }}
+                  />
+                  <Text
+                    style={[
+                      styles.rowLabel,
+                      styles.reminderLabel,
+                      setting.enabled ? undefined : styles.rowLabelDisabled,
+                    ]}
+                  >
+                    {reminder.label}
+                  </Text>
+                  <ReminderTimePicker
+                    hour={setting.hour}
+                    minute={setting.minute}
+                    disabled={!setting.enabled}
+                    scheme={scheme}
+                    onChange={(hour, minute) => updateReminder(reminder.id, { hour, minute })}
+                  />
+                </View>
+              );
+            })
+          : null}
+      </Section>
+
+      <Section
+        title="My church"
+        footer="Churches show content from their own admins."
+      >
+        <Pressable
+          onPress={() => router.push("/welcome")}
+          style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
+        >
+          <View style={styles.rowCopy}>
+            <Text style={styles.rowLabel}>{church?.name ?? "No church selected"}</Text>
+            {church ? (
+              <Text style={styles.rowDetail}>{formatChurchLocation(church)}</Text>
+            ) : null}
+          </View>
+          <Text style={styles.link}>{church ? "Change" : "Choose"}</Text>
+        </Pressable>
+      </Section>
+
+      <Section title="Admin">
+        {admin ? (
+          <>
+            <View style={styles.row}>
+              <View style={styles.rowCopy}>
+                <Text style={styles.rowLabel}>Signed in as {admin.username}</Text>
+                <Text style={styles.rowDetail}>
+                  {admin.role === "developer" ? "Developer" : "Church admin"}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={confirmSignOut}
+              style={({ pressed }) => [
+                styles.row,
+                styles.rowDivider,
+                pressed ? styles.pressed : undefined,
+              ]}
+            >
+              <Text style={[styles.rowLabel, styles.danger]}>Sign out</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Pressable
+            onPress={() => router.push("/sign-in")}
+            style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
+          >
+            <Text style={[styles.rowLabel, styles.link]}>Admin sign in</Text>
+          </Pressable>
+        )}
+      </Section>
+    </ScrollView>
+  );
+}
+
+function Section({
+  title,
+  footer,
+  children,
+}: {
+  title: string;
+  footer?: string;
+  children: ReactNode;
+}) {
+  const styles = useThemedStyles(createStyles);
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.card}>{children}</View>
+      {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
+    </View>
+  );
+}
+
+function ReminderTimePicker({
+  hour,
+  minute,
+  disabled,
+  scheme,
+  onChange,
+}: {
+  hour: number;
+  minute: number;
+  disabled: boolean;
+  scheme: "light" | "dark";
+  onChange: (hour: number, minute: number) => void;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const value = new Date();
+  value.setHours(hour, minute, 0, 0);
+
+  const handleChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (event.type === "set" && date) {
+      onChange(date.getHours(), date.getMinutes());
+    }
+  };
+
+  if (process.env.EXPO_OS === "ios") {
+    return (
+      <DateTimePicker
+        value={value}
+        mode="time"
+        display="compact"
+        disabled={disabled}
+        themeVariant={scheme}
+        onChange={handleChange}
+      />
+    );
+  }
+
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={() =>
+        DateTimePickerAndroid.open({ value, mode: "time", onChange: handleChange })
+      }
+      style={[styles.timeButton, disabled ? styles.rowLabelDisabled : undefined]}
+    >
+      <Text style={styles.timeText}>{formatReminderTime(hour, minute)}</Text>
+    </Pressable>
+  );
+}
+
+const createStyles = (palette: AppPalette) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 48,
+      gap: 26,
+    },
+    section: {
+      gap: 8,
+    },
+    sectionTitle: {
+      color: palette.muted,
+      fontSize: 13,
+      fontWeight: "700",
+      textTransform: "uppercase",
+      paddingHorizontal: 4,
+    },
+    sectionFooter: {
+      color: palette.muted,
+      fontSize: 13,
+      lineHeight: 18,
+      paddingHorizontal: 4,
+    },
+    card: {
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderCurve: "continuous",
+      borderRadius: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      overflow: "hidden",
+    },
+    row: {
+      minHeight: 52,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    rowDivider: {
+      borderTopColor: palette.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    rowCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    rowLabel: {
+      color: palette.text,
+      fontSize: 17,
+    },
+    reminderLabel: {
+      flex: 1,
+    },
+    rowLabelDisabled: {
+      opacity: 0.45,
+    },
+    rowDetail: {
+      color: palette.muted,
+      fontSize: 14,
+    },
+    link: {
+      color: palette.accent,
+      fontSize: 17,
+      fontWeight: "600",
+    },
+    danger: {
+      color: palette.danger,
+    },
+    pressed: {
+      opacity: 0.6,
+    },
+    segmented: {
+      flexDirection: "row",
+      backgroundColor: palette.surfaceSoft,
+      borderCurve: "continuous",
+      borderRadius: 10,
+      marginHorizontal: 16,
+      marginBottom: 14,
+      padding: 3,
+    },
+    segment: {
+      flex: 1,
+      alignItems: "center",
+      borderCurve: "continuous",
+      borderRadius: 8,
+      paddingVertical: 8,
+    },
+    segmentSelected: {
+      backgroundColor: palette.accent,
+    },
+    segmentText: {
+      color: palette.text,
+      fontSize: 15,
+      fontWeight: "600",
+    },
+    segmentTextSelected: {
+      color: palette.onAccent,
+    },
+    timeButton: {
+      backgroundColor: palette.surfaceSoft,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    timeText: {
+      color: palette.text,
+      fontSize: 16,
+      fontVariant: ["tabular-nums"],
+    },
+  });

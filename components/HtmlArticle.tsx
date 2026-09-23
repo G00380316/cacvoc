@@ -1,7 +1,14 @@
+import { useMemo } from "react";
 import { useWindowDimensions } from "react-native";
-import { defaultSystemFonts, RenderHTML } from "react-native-render-html";
+import {
+  defaultSystemFonts,
+  RenderHTML,
+  type MixedStyleDeclaration,
+  type MixedStyleRecord,
+} from "react-native-render-html";
 
-import { Palette, Typography } from "@/constants/Design";
+import { Typography, type AppPalette } from "@/constants/Design";
+import { usePalette } from "@/contexts/ThemeContext";
 
 type HtmlArticleProps = {
   html: string;
@@ -94,8 +101,119 @@ function normalizeHtml(html: string): string {
     .trim();
 }
 
+function createBaseStyle(palette: AppPalette): MixedStyleDeclaration {
+  return {
+    color: palette.text,
+    fontFamily: Typography.reader,
+    fontSize: 19,
+    lineHeight: 31,
+  };
+}
+
+function createTagsStyles(palette: AppPalette): MixedStyleRecord {
+  return {
+    body: {
+      color: palette.text,
+    },
+    h2: {
+      color: palette.text,
+      fontFamily: Typography.ui,
+      fontSize: 28,
+      fontWeight: "800",
+      lineHeight: 36,
+      marginBottom: 14,
+      marginTop: 8,
+    },
+    p: {
+      color: palette.text,
+      fontSize: 19,
+      lineHeight: 31,
+      marginTop: 0,
+      marginBottom: 14,
+    },
+    div: {
+      color: palette.text,
+      marginBottom: 12,
+    },
+    blockquote: {
+      color: palette.text,
+      marginVertical: 10,
+    },
+    h3: {
+      borderLeftColor: palette.accent,
+      borderLeftWidth: 4,
+      color: palette.text,
+      fontFamily: Typography.ui,
+      fontSize: 21,
+      fontWeight: "800",
+      lineHeight: 28,
+      marginBottom: 12,
+      marginTop: 18,
+      paddingLeft: 14,
+    },
+    li: {
+      color: palette.text,
+      fontSize: 19,
+      lineHeight: 31,
+      marginBottom: 8,
+    },
+  };
+}
+
+function createClassesStyles(palette: AppPalette): MixedStyleRecord {
+  return {
+    date: {
+      color: palette.muted,
+      fontFamily: Typography.ui,
+      fontSize: 16,
+      fontWeight: "600",
+      lineHeight: 22,
+      marginBottom: 4,
+      marginTop: 0,
+    },
+    bibleRef: {
+      color: palette.text,
+      fontFamily: Typography.reader,
+      fontSize: 20,
+      fontStyle: "italic",
+      fontWeight: "400",
+      lineHeight: 29,
+      marginBottom: 4,
+    },
+    byline: {
+      color: palette.muted,
+      fontFamily: Typography.ui,
+      fontSize: 14,
+      fontStyle: "normal",
+      fontWeight: "700",
+      lineHeight: 19,
+      marginBottom: 20,
+    },
+    text: {
+      marginTop: 8,
+    },
+    readingItem: {
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      fontSize: 18,
+      lineHeight: 27,
+      marginBottom: 10,
+      paddingBottom: 12,
+      paddingLeft: 14,
+      paddingRight: 14,
+      paddingTop: 12,
+    },
+  };
+}
+
 export function HtmlArticle({ html }: HtmlArticleProps) {
   const { width } = useWindowDimensions();
+  const palette = usePalette();
+  const baseStyle = useMemo(() => createBaseStyle(palette), [palette]);
+  const tagsStyles = useMemo(() => createTagsStyles(palette), [palette]);
+  const classesStyles = useMemo(() => createClassesStyles(palette), [palette]);
   const systemFonts = [
     ...defaultSystemFonts,
     Typography.reader,
@@ -121,104 +239,9 @@ export function HtmlArticle({ html }: HtmlArticleProps) {
         "marginRight",
         "marginTop",
       ]}
-      baseStyle={{
-        color: Palette.text,
-        fontFamily: Typography.reader,
-        fontSize: 19,
-        lineHeight: 31,
-      }}
-      tagsStyles={{
-        body: {
-          color: Palette.text,
-        },
-        h2: {
-          color: Palette.text,
-          fontFamily: Typography.ui,
-          fontSize: 28,
-          fontWeight: "800",
-          lineHeight: 36,
-          marginBottom: 14,
-          marginTop: 8,
-        },
-        p: {
-          color: Palette.text,
-          fontSize: 19,
-          lineHeight: 31,
-          marginTop: 0,
-          marginBottom: 14,
-        },
-        div: {
-          color: Palette.text,
-          marginBottom: 12,
-        },
-        blockquote: {
-          color: Palette.text,
-          marginVertical: 10,
-        },
-        h3: {
-          borderLeftColor: Palette.accent,
-          borderLeftWidth: 4,
-          color: Palette.text,
-          fontFamily: Typography.ui,
-          fontSize: 21,
-          fontWeight: "800",
-          lineHeight: 28,
-          marginBottom: 12,
-          marginTop: 18,
-          paddingLeft: 14,
-        },
-        li: {
-          color: Palette.text,
-          fontSize: 19,
-          lineHeight: 31,
-          marginBottom: 8,
-        },
-      }}
-      classesStyles={{
-        date: {
-          color: Palette.muted,
-          fontFamily: Typography.ui,
-          fontSize: 16,
-          fontWeight: "600",
-          lineHeight: 22,
-          marginBottom: 4,
-          marginTop: 0,
-        },
-        bibleRef: {
-          color: Palette.text,
-          fontFamily: Typography.reader,
-          fontSize: 20,
-          fontStyle: "italic",
-          fontWeight: "400",
-          lineHeight: 29,
-          marginBottom: 4,
-        },
-        byline: {
-          color: Palette.muted,
-          fontFamily: Typography.ui,
-          fontSize: 14,
-          fontStyle: "normal",
-          fontWeight: "700",
-          lineHeight: 19,
-          marginBottom: 20,
-        },
-        text: {
-          marginTop: 8,
-        },
-        readingItem: {
-          backgroundColor: Palette.surface,
-          borderColor: Palette.border,
-          borderRadius: 8,
-          borderWidth: 1,
-          fontSize: 18,
-          lineHeight: 27,
-          marginBottom: 10,
-          paddingBottom: 12,
-          paddingLeft: 14,
-          paddingRight: 14,
-          paddingTop: 12,
-        },
-      }}
+      baseStyle={baseStyle}
+      tagsStyles={tagsStyles}
+      classesStyles={classesStyles}
     />
   );
 }

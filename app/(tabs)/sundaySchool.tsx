@@ -11,7 +11,8 @@ import { ThemedView } from "@/components/ThemedView";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { fetchFirstJson } from "@/constants/Api";
 import type { SundaySchool } from "@/constants/ContentTypes";
-import { Palette } from "@/constants/Design";
+import type { AppPalette } from "@/constants/Design";
+import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
 import { buildSundaySchoolSpeechSegments } from "@/constants/Reader";
 
 type SundaySchoolResponse = {
@@ -22,6 +23,8 @@ type SundaySchoolResponse = {
 };
 
 export default function HomeScreen() {
+    const styles = useThemedStyles(createStyles);
+    const palette = usePalette();
     const [text, setText] = useState("");
     const [title, setTitle] = useState("");
     const [audio, setAudio] = useState<string | null>(null);
@@ -68,7 +71,7 @@ export default function HomeScreen() {
     }, [load]);
 
     return (
-        <ThemedView lightColor={Palette.background} style={styles.container}>
+        <ThemedView lightColor={palette.background} style={styles.container}>
             <Animated.ScrollView
                 contentContainerStyle={{
                     paddingTop: insets.top + 10,
@@ -82,7 +85,7 @@ export default function HomeScreen() {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={refresh}
-                        tintColor={Palette.accent}
+                        tintColor={palette.accent}
                     />
                 }
             >
@@ -122,19 +125,20 @@ export default function HomeScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    content: {
-        backgroundColor: Palette.background,
-        paddingHorizontal: 24,
-        paddingBottom: 32,
-        overflow: "hidden",
-    },
-    error: {
-        color: Palette.danger,
-        fontSize: 17,
-        lineHeight: 24,
-    },
-});
+const createStyles = (palette: AppPalette) =>
+    StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        content: {
+            backgroundColor: palette.background,
+            paddingHorizontal: 24,
+            paddingBottom: 32,
+            overflow: "hidden",
+        },
+        error: {
+            color: palette.danger,
+            fontSize: 17,
+            lineHeight: 24,
+        },
+    });
