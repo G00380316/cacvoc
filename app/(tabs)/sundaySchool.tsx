@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
+import { FloatingLinkButton } from "@/components/FloatingLinkButton";
 import { FloatingReaderButton } from "@/components/FloatingReaderButton";
 import { HtmlArticle } from "@/components/HtmlArticle";
 import { AnimatedContent, SundayArticleSkeleton } from "@/components/LoadingStates";
@@ -121,6 +122,13 @@ export default function HomeScreen() {
                     activityKey={scrollActivityKey}
                 />
             ) : undefined}
+            <FloatingLinkButton
+                href="/sunday-school"
+                icon="documents"
+                accessibilityLabel="Sunday School archives"
+                bottomOffset={bottom}
+                activityKey={scrollActivityKey}
+            />
         </ThemedView>
     );
 }

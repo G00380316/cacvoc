@@ -1,3 +1,4 @@
+import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -5,10 +6,8 @@ import Animated from "react-native-reanimated";
 
 import { ArchiveList } from "@/components/ArchiveList";
 import { AnimatedContent, ArchiveSkeleton } from "@/components/LoadingStates";
-import { ScreenHeader } from "@/components/ScreenHeader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { fetchFirstJson } from "@/constants/Api";
 import type { SundaySchool } from "@/constants/ContentTypes";
 import type { AppPalette } from "@/constants/Design";
@@ -25,7 +24,6 @@ export default function SundayArchivesScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
-    const bottom = useBottomTabOverflow();
     const insets = useSafeAreaInsets();
 
     const load = useCallback(async () => {
@@ -56,10 +54,11 @@ export default function SundayArchivesScreen() {
 
     return (
         <ThemedView lightColor={palette.background} style={styles.container}>
+            <Stack.Screen options={{ title: "Sunday School Archives" }} />
             <Animated.ScrollView
                 contentContainerStyle={{
-                    paddingTop: insets.top + 10,
-                    paddingBottom: bottom + 24,
+                    paddingTop: 16,
+                    paddingBottom: insets.bottom + 24,
                 }}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -70,8 +69,6 @@ export default function SundayArchivesScreen() {
                     />
                 }
             >
-                <ScreenHeader title="Sunday School Archives" />
-
                 <ThemedView style={styles.body}>
                     {loading ? <ArchiveSkeleton /> : undefined}
                     {!loading && error ? (

@@ -60,14 +60,6 @@ export default function TabLayout() {
         name="sundaySchool"
         options={{ title: "Sunday", tabBarIcon: tabIcon("book") }}
       />
-      <Tabs.Screen
-        name="wordArchives"
-        options={{ title: "WFT", tabBarIcon: tabIcon("archive") }}
-      />
-      <Tabs.Screen
-        name="sundayArchives"
-        options={{ title: "SS", tabBarIcon: tabIcon("documents") }}
-      />
       <Tabs.Screen name="hymns" options={{ title: "Hymns", tabBarIcon: tabIcon("music") }} />
       <Tabs.Screen
         name="editor"
@@ -77,6 +69,10 @@ export default function TabLayout() {
           // Only signed-in admins get the Editor tab.
           href: admin ? undefined : null,
         }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{ title: "Settings", tabBarIcon: tabIcon("cog") }}
       />
     </Tabs>
   );

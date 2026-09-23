@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
+import { FloatingLinkButton } from "@/components/FloatingLinkButton";
 import { FloatingReaderButton } from "@/components/FloatingReaderButton";
 import { AnimatedContent, ArticleSkeleton } from "@/components/LoadingStates";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -127,6 +128,13 @@ export default function HomeScreen() {
                     activityKey={scrollActivityKey}
                 />
             ) : undefined}
+            <FloatingLinkButton
+                href="/wordfortoday"
+                icon="archive"
+                accessibilityLabel="Word for Today archives"
+                bottomOffset={bottom}
+                activityKey={scrollActivityKey}
+            />
         </ThemedView>
     );
 }

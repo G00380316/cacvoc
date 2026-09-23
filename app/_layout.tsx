@@ -94,7 +94,6 @@ function RootNavigator() {
       >
         <Stack.Protected guard={onboarded}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="settings" options={{ title: "Settings" }} />
           <Stack.Screen
             name="sign-in"
             options={{ title: "Admin sign in", presentation: "modal" }}

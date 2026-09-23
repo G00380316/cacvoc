@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Pressable } from "react-native";
 import Entypo from "@expo/vector-icons/Entypo";
 import * as Haptics from "expo-haptics";
 import { requireOptionalNativeModule } from "expo-modules-core";
@@ -12,8 +12,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { floatingButtonBottom, useFloatingButtonStyles } from "@/components/FloatingButtonChrome";
 import { useAppTheme } from "@/contexts/ThemeContext";
 import { extractAudioUrl, prepareTextForSpeech } from "@/constants/Reader";
+import { useIdleFade } from "@/hooks/useIdleFade";
 
 type AudioPlayer = {
   currentTime: number;
@@ -145,12 +147,10 @@ export function FloatingReaderButton({
 }: FloatingReaderButtonProps) {
   const audioUrl = useMemo(() => extractAudioUrl(audio), [audio]);
   const insets = useSafeAreaInsets();
-  const { scheme, palette } = useAppTheme();
-  const styles = stylesByScheme[scheme];
-  const opacity = useSharedValue(1);
+  const { palette } = useAppTheme();
+  const styles = useFloatingButtonStyles();
   const scale = useSharedValue(1);
   const fillProgress = useSharedValue(1);
-  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
   const audioPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const readerIdRef = useRef(Symbol("floating-reader"));
@@ -170,25 +170,7 @@ export function FloatingReaderButton({
   const hasAudio = Boolean(audioUrl && audioAvailable);
   const isPlaying = hasAudio ? isAudioPlaying : isSpeaking;
 
-  const scheduleFade = useCallback(() => {
-    if (idleTimer.current) {
-      clearTimeout(idleTimer.current);
-    }
-
-    opacity.value = withTiming(1, { duration: 160 });
-    idleTimer.current = setTimeout(() => {
-      opacity.value = withTiming(isPlaying ? 0.62 : 0.34, { duration: 420 });
-    }, 3000);
-  }, [isPlaying, opacity]);
-
-  useEffect(() => {
-    scheduleFade();
-    return () => {
-      if (idleTimer.current) {
-        clearTimeout(idleTimer.current);
-      }
-    };
-  }, [activityKey, isPlaying, scheduleFade]);
+  const { opacity, wake: scheduleFade } = useIdleFade(activityKey, isPlaying ? 0.62 : 0.34);
 
   useEffect(() => {
     speechSegmentsRef.current = speechSegments;
@@ -552,7 +534,7 @@ export function FloatingReaderButton({
       style={[
         styles.container,
         {
-          bottom: bottomOffset + insets.bottom + 16,
+          bottom: floatingButtonBottom(bottomOffset, insets.bottom),
         },
       ]}
     >
@@ -575,66 +557,3 @@ export function FloatingReaderButton({
     </Animated.View>
   );
 }
-
-type ReaderChrome = {
-  buttonBackground: string;
-  buttonBorder: string;
-  buttonShadow: string;
-  fill: string;
-};
-
-const READER_CHROME: Record<"light" | "dark", ReaderChrome> = {
-  light: {
-    buttonBackground: "rgba(255, 255, 255, 0.34)",
-    buttonBorder: "rgba(29, 111, 66, 0.2)",
-    buttonShadow: "0 12px 28px rgba(29, 111, 66, 0.18)",
-    fill: "rgba(29, 111, 66, 0.58)",
-  },
-  dark: {
-    buttonBackground: "rgba(26, 32, 27, 0.55)",
-    buttonBorder: "rgba(92, 191, 133, 0.28)",
-    buttonShadow: "0 12px 28px rgba(0, 0, 0, 0.45)",
-    fill: "rgba(92, 191, 133, 0.88)",
-  },
-};
-
-const createStyles = (chrome: ReaderChrome) =>
-  StyleSheet.create({
-    container: {
-      position: "absolute",
-      right: 18,
-      zIndex: 20,
-    },
-    button: {
-      alignItems: "center",
-      backgroundColor: chrome.buttonBackground,
-      borderColor: chrome.buttonBorder,
-      borderCurve: "continuous",
-      borderRadius: 29,
-      borderWidth: 1,
-      boxShadow: chrome.buttonShadow,
-      height: 58,
-      justifyContent: "center",
-      overflow: "hidden",
-      width: 58,
-    },
-    fill: {
-      backgroundColor: chrome.fill,
-      bottom: 0,
-      height: 58,
-      left: 0,
-      position: "absolute",
-      right: 0,
-    },
-    pressed: {
-      opacity: 0.72,
-    },
-    icon: {
-      zIndex: 1,
-    },
-  });
-
-const stylesByScheme = {
-  light: createStyles(READER_CHROME.light),
-  dark: createStyles(READER_CHROME.dark),
-};

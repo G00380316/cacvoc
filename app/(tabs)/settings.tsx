@@ -15,7 +15,10 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import type { AppPalette } from "@/constants/Design";
 import { formatChurchLocation } from "@/constants/ChurchTypes";
 import {
@@ -48,6 +51,8 @@ export default function SettingsScreen() {
   const { preference, setPreference, palette, scheme } = useAppTheme();
   const { admin, signOut } = useAuth();
   const { church } = useChurch();
+  const insets = useSafeAreaInsets();
+  const bottom = useBottomTabOverflow();
   const [reminders, setReminders] = useState<ReminderSettings>(DEFAULT_REMINDER_SETTINGS);
   const saveQueue = useRef(Promise.resolve());
 
@@ -115,131 +120,134 @@ export default function SettingsScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: bottom + 32 }}
+      showsVerticalScrollIndicator={false}
     >
-      <Section title="General">
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Appearance</Text>
-        </View>
-        <View style={styles.segmented}>
-          {THEME_OPTIONS.map((option) => {
-            const selected = preference === option.value;
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setPreference(option.value);
-                }}
-                style={[styles.segment, selected ? styles.segmentSelected : undefined]}
-              >
-                <Text
-                  style={[styles.segmentText, selected ? styles.segmentTextSelected : undefined]}
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </Section>
-
-      <Section
-        title="Notifications"
-        footer="Daily reminders arrive at the times you choose."
-      >
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Reminders</Text>
-          <Switch
-            value={reminders.enabled}
-            onValueChange={toggleNotifications}
-            trackColor={{ true: palette.accent }}
-          />
-        </View>
-        {reminders.enabled
-          ? REMINDERS.map((reminder) => {
-              const setting = reminders.reminders[reminder.id];
-              return (
-                <View key={reminder.id} style={[styles.row, styles.rowDivider]}>
-                  <Switch
-                    value={setting.enabled}
-                    onValueChange={(enabled) => updateReminder(reminder.id, { enabled })}
-                    trackColor={{ true: palette.accent }}
-                  />
-                  <Text
-                    style={[
-                      styles.rowLabel,
-                      styles.reminderLabel,
-                      setting.enabled ? undefined : styles.rowLabelDisabled,
-                    ]}
-                  >
-                    {reminder.label}
-                  </Text>
-                  <ReminderTimePicker
-                    hour={setting.hour}
-                    minute={setting.minute}
-                    disabled={!setting.enabled}
-                    scheme={scheme}
-                    onChange={(hour, minute) => updateReminder(reminder.id, { hour, minute })}
-                  />
-                </View>
-              );
-            })
-          : null}
-      </Section>
-
-      <Section
-        title="My church"
-        footer="Churches show content from their own admins."
-      >
-        <Pressable
-          onPress={() => router.push("/welcome")}
-          style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
-        >
-          <View style={styles.rowCopy}>
-            <Text style={styles.rowLabel}>{church?.name ?? "No church selected"}</Text>
-            {church ? (
-              <Text style={styles.rowDetail}>{formatChurchLocation(church)}</Text>
-            ) : null}
+      <ScreenHeader title="Settings" />
+      <View style={styles.content}>
+        <Section title="General">
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Appearance</Text>
           </View>
-          <Text style={styles.link}>{church ? "Change" : "Choose"}</Text>
-        </Pressable>
-      </Section>
+          <View style={styles.segmented}>
+            {THEME_OPTIONS.map((option) => {
+              const selected = preference === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setPreference(option.value);
+                  }}
+                  style={[styles.segment, selected ? styles.segmentSelected : undefined]}
+                >
+                  <Text
+                    style={[styles.segmentText, selected ? styles.segmentTextSelected : undefined]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Section>
 
-      <Section title="Admin">
-        {admin ? (
-          <>
-            <View style={styles.row}>
-              <View style={styles.rowCopy}>
-                <Text style={styles.rowLabel}>Signed in as {admin.username}</Text>
-                <Text style={styles.rowDetail}>
-                  {admin.role === "developer" ? "Developer" : "Church admin"}
-                </Text>
-              </View>
-            </View>
-            <Pressable
-              onPress={confirmSignOut}
-              style={({ pressed }) => [
-                styles.row,
-                styles.rowDivider,
-                pressed ? styles.pressed : undefined,
-              ]}
-            >
-              <Text style={[styles.rowLabel, styles.danger]}>Sign out</Text>
-            </Pressable>
-          </>
-        ) : (
+        <Section
+          title="Notifications"
+          footer="Daily reminders arrive at the times you choose."
+        >
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Reminders</Text>
+            <Switch
+              value={reminders.enabled}
+              onValueChange={toggleNotifications}
+              trackColor={{ true: palette.accent }}
+            />
+          </View>
+          {reminders.enabled
+            ? REMINDERS.map((reminder) => {
+                const setting = reminders.reminders[reminder.id];
+                return (
+                  <View key={reminder.id} style={[styles.row, styles.rowDivider]}>
+                    <Switch
+                      value={setting.enabled}
+                      onValueChange={(enabled) => updateReminder(reminder.id, { enabled })}
+                      trackColor={{ true: palette.accent }}
+                    />
+                    <Text
+                      style={[
+                        styles.rowLabel,
+                        styles.reminderLabel,
+                        setting.enabled ? undefined : styles.rowLabelDisabled,
+                      ]}
+                    >
+                      {reminder.label}
+                    </Text>
+                    <ReminderTimePicker
+                      hour={setting.hour}
+                      minute={setting.minute}
+                      disabled={!setting.enabled}
+                      scheme={scheme}
+                      onChange={(hour, minute) => updateReminder(reminder.id, { hour, minute })}
+                    />
+                  </View>
+                );
+              })
+            : null}
+        </Section>
+
+        <Section
+          title="My church"
+          footer="Churches show content from their own admins."
+        >
           <Pressable
-            onPress={() => router.push("/sign-in")}
+            onPress={() => router.push("/welcome")}
             style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
           >
-            <Text style={[styles.rowLabel, styles.link]}>Admin sign in</Text>
+            <View style={styles.rowCopy}>
+              <Text style={styles.rowLabel}>{church?.name ?? "No church selected"}</Text>
+              {church ? (
+                <Text style={styles.rowDetail}>{formatChurchLocation(church)}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.link}>{church ? "Change" : "Choose"}</Text>
           </Pressable>
-        )}
-      </Section>
+        </Section>
+
+        <Section title="Admin">
+          {admin ? (
+            <>
+              <View style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowLabel}>Signed in as {admin.username}</Text>
+                  <Text style={styles.rowDetail}>
+                    {admin.role === "developer" ? "Developer" : "Church admin"}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={confirmSignOut}
+                style={({ pressed }) => [
+                  styles.row,
+                  styles.rowDivider,
+                  pressed ? styles.pressed : undefined,
+                ]}
+              >
+                <Text style={[styles.rowLabel, styles.danger]}>Sign out</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              onPress={() => router.push("/sign-in")}
+              style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
+            >
+              <Text style={[styles.rowLabel, styles.link]}>Admin sign in</Text>
+            </Pressable>
+          )}
+        </Section>
+      </View>
     </ScrollView>
   );
 }
@@ -320,8 +328,8 @@ const createStyles = (palette: AppPalette) =>
       backgroundColor: palette.background,
     },
     content: {
-      padding: 20,
-      paddingBottom: 48,
+      paddingHorizontal: 24,
+      paddingTop: 8,
       gap: 26,
     },
     section: {
