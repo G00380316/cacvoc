@@ -552,23 +552,24 @@ export function FloatingReaderButton({
         {
           bottom: bottomOffset + insets.bottom + 16,
         },
-        animatedStyle,
       ]}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={isPlaying ? "Pause reader" : "Play reader"}
-        onPress={toggle}
-        style={({ pressed }) => [styles.button, pressed ? styles.pressed : undefined]}
-      >
-        <Animated.View pointerEvents="none" style={[styles.fill, fillStyle]} />
-        <Entypo
-          name={isPlaying ? "controller-paus" : "controller-play"}
-          size={27}
-          color={iconUsesAccent ? Palette.accent : Palette.surface}
-          style={styles.icon}
-        />
-      </Pressable>
+      <Animated.View style={animatedStyle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isPlaying ? "Pause reader" : "Play reader"}
+          onPress={toggle}
+          style={({ pressed }) => [styles.button, pressed ? styles.pressed : undefined]}
+        >
+          <Animated.View pointerEvents="none" style={[styles.fill, fillStyle]} />
+          <Entypo
+            name={isPlaying ? "controller-paus" : "controller-play"}
+            size={27}
+            color={iconUsesAccent ? Palette.accent : Palette.surface}
+            style={styles.icon}
+          />
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }
