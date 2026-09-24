@@ -10,8 +10,11 @@ import {
   requireMobileSecret,
   signAdminToken,
 } from "./auth.js";
+import { contentRouter } from "./content.js";
 import { connectMongoDB } from "./db.js";
+import { haversineKm } from "./geo.js";
 import { Admin, Church, SundaySchool, WFT } from "./models.js";
+import { findCacChurchesNear } from "./osm.js";
 import { scrapeSundaySchool, scrapeWordForToday } from "./scrapers.js";
 import {
   serializeAdmin,
@@ -35,6 +38,7 @@ app.use("/auth", requireMobileSecret);
 app.use("/churches", requireMobileSecret);
 app.use("/editor", requireMobileSecret);
 app.use("/dev", requireMobileSecret);
+app.use("/posts", requireMobileSecret);
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAILURES = 10;
@@ -86,17 +90,6 @@ function parseCoordinate(value, min, max) {
   }
 
   return { value: number };
-}
-
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const toRadians = (degrees) => (degrees * Math.PI) / 180;
-  const dLat = toRadians(lat2 - lat1);
-  const dLng = toRadians(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) ** 2;
-
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 app.post("/auth/login", async (req, res, next) => {
@@ -186,6 +179,25 @@ app.get("/churches", async (req, res, next) => {
     }
 
     res.json({ churches });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/churches/suggestions", async (req, res, next) => {
+  try {
+    const lat = parseCoordinate(req.query.lat, -90, 90);
+    const lng = parseCoordinate(req.query.lng, -180, 180);
+
+    if (lat.error || lng.error || lat.value === undefined || lng.value === undefined) {
+      res.status(400).json({ error: "lat and lng must be valid coordinates" });
+      return;
+    }
+
+    await connectMongoDB();
+    const registered = await Church.find({ status: "approved" }, "latitude longitude").lean();
+
+    res.json(await findCacChurchesNear(lat.value, lng.value, { exclude: registered }));
   } catch (error) {
     next(error);
   }
@@ -435,6 +447,10 @@ app.post("/admin/scrape/ss", async (req, res, next) => {
     next(error);
   }
 });
+
+// Church posts, service times and image uploads. Mounted after the routes above so static
+// paths like /churches/suggestions are matched before the /churches/:id/... routes.
+app.use(contentRouter);
 
 app.use((error, req, res, next) => {
   if (error instanceof mongoose.Error.CastError) {

@@ -1,3 +1,5 @@
+import { getImageUrl } from "./storage.js";
+
 export function serializeChurch(church) {
   if (!church || typeof church !== "object" || !church._id) {
     return null;
@@ -40,4 +42,39 @@ export function serializeChurchForReview(church) {
     createdAt: church.createdAt,
     reviewedAt: church.reviewedAt ?? null,
   };
+}
+
+export function serializeServiceTimes(serviceTimes) {
+  return Array.isArray(serviceTimes)
+    ? serviceTimes.map(({ day, time, label }) => ({ day, time, label }))
+    : [];
+}
+
+function toIsoString(value) {
+  return value instanceof Date ? value.toISOString() : null;
+}
+
+export async function serializePost(post) {
+  return {
+    id: String(post._id),
+    churchId: String(post.church?._id ?? post.church),
+    type: post.type,
+    title: post.title,
+    body: post.body ?? "",
+    imageKey: post.imageKey ?? null,
+    imageUrl: post.imageKey ? await getImageUrl(post.imageKey) : null,
+    startsAt: toIsoString(post.startsAt),
+    endsAt: toIsoString(post.endsAt),
+    location: post.location ?? null,
+    preacher: post.preacher ?? null,
+    mediaUrl: post.mediaUrl ?? null,
+    bibleRef: post.bibleRef ?? null,
+    date: post.date ?? null,
+    createdAt: toIsoString(post.createdAt),
+    updatedAt: toIsoString(post.updatedAt),
+  };
+}
+
+export function serializePosts(posts) {
+  return Promise.all(posts.map(serializePost));
 }
