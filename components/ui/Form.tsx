@@ -1,7 +1,6 @@
 import { forwardRef, type ReactNode } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -9,7 +8,10 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
+import { FocusInput } from "@/components/ui/FocusInput";
+import { PressableScale } from "@/components/ui/PressableScale";
 import type { AppPalette } from "@/constants/Design";
 import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
 
@@ -35,25 +37,22 @@ export function Button({
   const inactive = disabled || loading;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        styles[variant],
-        inactive ? styles.disabled : undefined,
-        pressed ? styles.pressed : undefined,
-        style,
-      ]}
+      style={[styles.button, styles[variant], inactive ? styles.disabled : undefined, style]}
     >
-      {loading ? (
-        <ActivityIndicator color={variant === "primary" ? palette.onAccent : palette.accent} />
-      ) : (
-        <Text style={[styles.buttonText, styles[`${variant}Text`]]}>{title}</Text>
-      )}
-    </Pressable>
+      {/* Keyed so the label or spinner fades in when loading toggles. */}
+      <Animated.View key={loading ? "spinner" : "label"} entering={FadeIn.duration(160)}>
+        {loading ? (
+          <ActivityIndicator color={variant === "primary" ? palette.onAccent : palette.accent} />
+        ) : (
+          <Text style={[styles.buttonText, styles[`${variant}Text`]]}>{title}</Text>
+        )}
+      </Animated.View>
+    </PressableScale>
   );
 }
 
@@ -64,17 +63,11 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   ref
 ) {
   const styles = useThemedStyles(createStyles);
-  const palette = usePalette();
 
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        ref={ref}
-        placeholderTextColor={palette.muted}
-        style={[styles.input, style]}
-        {...props}
-      />
+      <FocusInput ref={ref} style={style} {...props} />
     </View>
   );
 });
@@ -109,9 +102,6 @@ const createStyles = (palette: AppPalette) =>
     disabled: {
       opacity: 0.45,
     },
-    pressed: {
-      opacity: 0.75,
-    },
     buttonText: {
       fontSize: 17,
       fontWeight: "700",
@@ -133,17 +123,6 @@ const createStyles = (palette: AppPalette) =>
       color: palette.text,
       fontSize: 14,
       fontWeight: "700",
-    },
-    input: {
-      backgroundColor: palette.surface,
-      borderColor: palette.border,
-      borderCurve: "continuous",
-      borderRadius: 10,
-      borderWidth: 1,
-      color: palette.text,
-      fontSize: 17,
-      paddingHorizontal: 14,
-      paddingVertical: 13,
     },
     card: {
       backgroundColor: palette.surface,

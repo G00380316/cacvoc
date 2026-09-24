@@ -1,18 +1,19 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { FocusInput } from "@/components/ui/FocusInput";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import type { AppPalette } from "@/constants/Design";
 import { HYMNS, searchHymns, type Hymn } from "@/constants/Hymns";
-import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
+import { useThemedStyles } from "@/contexts/ThemeContext";
 
 export default function HymnsScreen() {
   const styles = useThemedStyles(createStyles);
-  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const bottom = useBottomTabOverflow();
   const [query, setQuery] = useState("");
@@ -34,11 +35,10 @@ export default function HymnsScreen() {
     <View style={[styles.screen, { paddingTop: insets.top + 10 }]}>
       <ScreenHeader title="Hymns" />
       <View style={styles.searchWrap}>
-        <TextInput
+        <FocusInput
           value={query}
           onChangeText={setQuery}
           placeholder={`Search ${HYMNS.length} hymns by number or words`}
-          placeholderTextColor={palette.muted}
           autoCorrect={false}
           clearButtonMode="while-editing"
           returnKeyType="search"
@@ -47,7 +47,6 @@ export default function HymnsScreen() {
               openHymn(results[0]);
             }
           }}
-          style={styles.search}
         />
       </View>
       <FlatList
@@ -62,10 +61,7 @@ export default function HymnsScreen() {
           <Text style={styles.empty}>No hymns match “{query.trim()}”.</Text>
         }
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => openHymn(item)}
-            style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
-          >
+          <PressableScale pressedScale={0.98} onPress={() => openHymn(item)} style={styles.row}>
             <Text style={styles.number}>{item.number}</Text>
             <View style={styles.rowCopy}>
               <Text style={styles.title} numberOfLines={1}>
@@ -77,7 +73,7 @@ export default function HymnsScreen() {
                 </Text>
               ) : null}
             </View>
-          </Pressable>
+          </PressableScale>
         )}
       />
     </View>
@@ -94,17 +90,6 @@ const createStyles = (palette: AppPalette) =>
       paddingHorizontal: 24,
       paddingBottom: 12,
     },
-    search: {
-      backgroundColor: palette.surface,
-      borderColor: palette.border,
-      borderCurve: "continuous",
-      borderRadius: 10,
-      borderWidth: 1,
-      color: palette.text,
-      fontSize: 17,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-    },
     list: {
       paddingHorizontal: 24,
     },
@@ -115,9 +100,6 @@ const createStyles = (palette: AppPalette) =>
       borderBottomColor: palette.border,
       borderBottomWidth: StyleSheet.hairlineWidth,
       paddingVertical: 14,
-    },
-    pressed: {
-      opacity: 0.6,
     },
     number: {
       color: palette.accent,

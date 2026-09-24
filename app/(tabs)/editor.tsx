@@ -2,10 +2,13 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChurchForm, type ChurchFormValues } from "@/components/editor/ChurchForm";
 import { ChurchReviewList } from "@/components/editor/ChurchReviewList";
+import { PostManager } from "@/components/editor/PostManager";
+import { ServiceTimesEditor } from "@/components/editor/ServiceTimesEditor";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button, Card } from "@/components/ui/Form";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
@@ -102,61 +105,76 @@ export default function EditorScreen() {
       <ScreenHeader title="Editor" />
 
       <View style={styles.body}>
-        <View style={styles.section}>
+        <Animated.View layout={LinearTransition.duration(220)} style={styles.section}>
           <Text style={styles.sectionTitle}>Your church</Text>
 
-          {showForm ? (
-            <Card>
-              {!church ? (
-                <Text style={styles.muted}>
-                  Register the CAC church you manage. Once it&apos;s approved you can start
-                  editing its content.
-                </Text>
-              ) : null}
-              <ChurchForm
-                initial={church}
-                submitting={submitting}
-                onSubmit={submitChurch}
-                onCancel={church ? () => setEditing(false) : undefined}
-              />
-            </Card>
-          ) : (
-            <Card>
-              <View style={[styles.badge, styles[`badge_${status}`]]}>
-                <Text style={[styles.badgeText, styles[`badgeText_${status}`]]}>
-                  {STATUS_COPY[status].label}
-                </Text>
-              </View>
-              <Text style={styles.churchName}>{church.name}</Text>
-              <Text selectable style={styles.detail}>
-                {formatChurchLocation(church)}
-              </Text>
-              <Text style={styles.muted}>{STATUS_COPY[status].body}</Text>
-              {status !== "approved" ? (
-                <Button
-                  title={status === "rejected" ? "Edit and resubmit" : "Edit details"}
-                  variant="secondary"
-                  onPress={() => setEditing(true)}
+          {/* Keyed so switching between the form and the status card fades rather than snaps. */}
+          <Animated.View key={showForm ? "form" : "status"} entering={FadeIn.duration(250)}>
+            {showForm ? (
+              <Card>
+                {!church ? (
+                  <Text style={styles.muted}>
+                    Register the CAC church you manage. Once it&apos;s approved you can start
+                    editing its content.
+                  </Text>
+                ) : null}
+                <ChurchForm
+                  initial={church}
+                  submitting={submitting}
+                  onSubmit={submitChurch}
+                  onCancel={church ? () => setEditing(false) : undefined}
                 />
-              ) : null}
-            </Card>
-          )}
-        </View>
+              </Card>
+            ) : (
+              <Card>
+                <View style={[styles.badge, styles[`badge_${status}`]]}>
+                  <Text style={[styles.badgeText, styles[`badgeText_${status}`]]}>
+                    {STATUS_COPY[status].label}
+                  </Text>
+                </View>
+                <Text style={styles.churchName}>{church.name}</Text>
+                <Text selectable style={styles.detail}>
+                  {formatChurchLocation(church)}
+                </Text>
+                <Text style={styles.muted}>{STATUS_COPY[status].body}</Text>
+                {status !== "approved" ? (
+                  <Button
+                    title={status === "rejected" ? "Edit and resubmit" : "Edit details"}
+                    variant="secondary"
+                    onPress={() => setEditing(true)}
+                  />
+                ) : null}
+              </Card>
+            )}
+          </Animated.View>
+        </Animated.View>
 
         {church?.status === "approved" ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Content</Text>
-            <Card>
-              <Text style={styles.muted}>Content editing tools are coming soon.</Text>
-            </Card>
-          </View>
+          <>
+            <Animated.View
+              entering={FadeIn.duration(250)}
+              layout={LinearTransition.duration(220)}
+              style={styles.section}
+            >
+              <Text style={styles.sectionTitle}>Service times</Text>
+              <ServiceTimesEditor />
+            </Animated.View>
+            <Animated.View
+              entering={FadeIn.duration(250)}
+              layout={LinearTransition.duration(220)}
+              style={styles.section}
+            >
+              <Text style={styles.sectionTitle}>Posts</Text>
+              <PostManager />
+            </Animated.View>
+          </>
         ) : null}
 
         {admin.role === "developer" ? (
-          <View style={styles.section}>
+          <Animated.View layout={LinearTransition.duration(220)} style={styles.section}>
             <Text style={styles.sectionTitle}>Pending churches</Text>
             <ChurchReviewList refreshKey={refreshKey} />
-          </View>
+          </Animated.View>
         ) : null}
       </View>
     </ScrollView>

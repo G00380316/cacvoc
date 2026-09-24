@@ -47,6 +47,8 @@
     </dict>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Cacvoc uses your location to find Christ Apostolic Church assemblies near you.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Cacvoc uses your photo library so church admins can add pictures to their posts.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

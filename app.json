@@ -64,6 +64,14 @@
         {
           "color": "#1d6f42"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cacvoc uses your photo library so church admins can add pictures to their posts.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

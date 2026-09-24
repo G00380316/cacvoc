@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, FadeInUp, FadeOut, LinearTransition } from "react-native-reanimated";
 
 import { Button, Card } from "@/components/ui/Form";
 import { apiRequest } from "@/constants/Api";
@@ -14,7 +15,7 @@ type ReviewChurch = Church & { createdAt?: string };
 /** Developer-only queue of churches waiting for approval. */
 export function ChurchReviewList({ refreshKey }: { refreshKey: number }) {
   const styles = useThemedStyles(createStyles);
-  const { token } = useAuth();
+  const { token, admin, refresh } = useAuth();
   const [churches, setChurches] = useState<ReviewChurch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,6 +50,10 @@ export function ChurchReviewList({ refreshKey }: { refreshKey: number }) {
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setChurches((current) => current.filter((item) => item.id !== church.id));
+      if (church.id === admin?.church?.id) {
+        // The developer reviewed their own church, so update its status card too.
+        refresh();
+      }
     } catch (reviewError) {
       Alert.alert(
         "Couldn't update church",
@@ -79,45 +84,56 @@ export function ChurchReviewList({ refreshKey }: { refreshKey: number }) {
   }
 
   if (churches.length === 0) {
-    return <Text style={styles.muted}>No churches are waiting for approval.</Text>;
+    return (
+      <Animated.Text entering={FadeIn.duration(250)} style={styles.muted}>
+        No churches are waiting for approval.
+      </Animated.Text>
+    );
   }
 
   return (
     <View style={styles.list}>
-      {churches.map((church) => (
-        <Card key={church.id}>
-          <View style={styles.copy}>
-            <Text style={styles.name}>{church.name}</Text>
-            <Text selectable style={styles.detail}>
-              {formatChurchLocation(church)}
-            </Text>
-            <Text style={styles.meta}>
-              {church.latitude != null && church.longitude != null
-                ? `${church.latitude.toFixed(4)}, ${church.longitude.toFixed(4)}`
-                : "No map position"}
-              {church.submittedBy ? ` · by ${church.submittedBy.username}` : ""}
-              {church.createdAt
-                ? ` · ${new Date(church.createdAt).toLocaleDateString()}`
-                : ""}
-            </Text>
-          </View>
-          <View style={styles.actions}>
-            <Button
-              title="Reject"
-              variant="danger"
-              disabled={busyId !== null}
-              onPress={() => confirmReject(church)}
-              style={styles.action}
-            />
-            <Button
-              title="Approve"
-              loading={busyId === church.id}
-              disabled={busyId !== null}
-              onPress={() => review(church, "approve")}
-              style={styles.action}
-            />
-          </View>
-        </Card>
+      {churches.map((church, index) => (
+        <Animated.View
+          key={church.id}
+          entering={FadeInUp.duration(280).delay(Math.min(index * 45, 225))}
+          exiting={FadeOut.duration(180)}
+          layout={LinearTransition.duration(220)}
+        >
+          <Card>
+            <View style={styles.copy}>
+              <Text style={styles.name}>{church.name}</Text>
+              <Text selectable style={styles.detail}>
+                {formatChurchLocation(church)}
+              </Text>
+              <Text style={styles.meta}>
+                {church.latitude != null && church.longitude != null
+                  ? `${church.latitude.toFixed(4)}, ${church.longitude.toFixed(4)}`
+                  : "No map position"}
+                {church.submittedBy ? ` · by ${church.submittedBy.username}` : ""}
+                {church.createdAt
+                  ? ` · ${new Date(church.createdAt).toLocaleDateString()}`
+                  : ""}
+              </Text>
+            </View>
+            <View style={styles.actions}>
+              <Button
+                title="Reject"
+                variant="danger"
+                disabled={busyId !== null}
+                onPress={() => confirmReject(church)}
+                style={styles.action}
+              />
+              <Button
+                title="Approve"
+                loading={busyId === church.id}
+                disabled={busyId !== null}
+                onPress={() => review(church, "approve")}
+                style={styles.action}
+              />
+            </View>
+          </Card>
+        </Animated.View>
       ))}
     </View>
   );

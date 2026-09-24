@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import Animated, { FadeInUp, LinearTransition } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { PressableScale } from "@/components/ui/PressableScale";
 import type { AppPalette } from "@/constants/Design";
 import { useAppTheme, useThemedStyles } from "@/contexts/ThemeContext";
 import { stripHtml } from "@/constants/Html";
@@ -41,22 +42,19 @@ export function ArchiveList({ items, routePrefix, showDate }: ArchiveListProps) 
             entering={FadeInUp.duration(320).delay(Math.min(index * 45, 360))}
             layout={LinearTransition.duration(180)}
           >
-            <Pressable
+            <PressableScale
+              pressedScale={0.98}
               onPress={() => {
                 Haptics.selectionAsync();
                 router.push(`/${routePrefix}/${item._id}`);
               }}
-              style={({ pressed }) => [
-                styles.row,
-                scheme === "dark" ? styles.rowDark : undefined,
-                pressed ? styles.rowPressed : undefined,
-              ]}
+              style={[styles.row, scheme === "dark" ? styles.rowDark : undefined]}
             >
               {showDate && date ? (
                 <ThemedText style={styles.rowDate}>{date}</ThemedText>
               ) : undefined}
               <ThemedText style={styles.rowText}>{title}</ThemedText>
-            </Pressable>
+            </PressableScale>
           </Animated.View>
         );
       })}
@@ -84,9 +82,6 @@ const createStyles = (palette: AppPalette) =>
     },
     rowDark: {
       boxShadow: "0 1px 3px rgba(0, 0, 0, 0.32)",
-    },
-    rowPressed: {
-      opacity: 0.68,
     },
     rowText: {
       color: palette.text,

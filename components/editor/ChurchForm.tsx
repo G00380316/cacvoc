@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 import { Button, TextField } from "@/components/ui/Form";
 import type { Church } from "@/constants/ChurchTypes";
@@ -112,7 +113,11 @@ export function ChurchForm({ initial, submitting, onSubmit, onCancel }: ChurchFo
           loading={locating}
           onPress={useCurrentLocation}
         />
-        {locationMessage ? <Text style={styles.hint}>{locationMessage}</Text> : null}
+        {locationMessage ? (
+          <Animated.Text entering={FadeIn.duration(200)} style={styles.hint}>
+            {locationMessage}
+          </Animated.Text>
+        ) : null}
       </View>
 
       <Button

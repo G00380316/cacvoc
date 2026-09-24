@@ -1,8 +1,3 @@
-import DateTimePicker, {
-  DateTimePickerAndroid,
-  type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
-import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -15,9 +10,12 @@ import {
   Text,
   View,
 } from "react-native";
+import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { DateTimeField } from "@/components/ui/DateTimeField";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import type { AppPalette } from "@/constants/Design";
 import { formatChurchLocation } from "@/constants/ChurchTypes";
@@ -25,7 +23,6 @@ import {
   applyReminderSchedule,
   DEFAULT_REMINDER_SETTINGS,
   ensureNotificationPermission,
-  formatReminderTime,
   loadReminderSettings,
   REMINDERS,
   saveReminderSettings,
@@ -48,7 +45,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 
 export default function SettingsScreen() {
   const styles = useThemedStyles(createStyles);
-  const { preference, setPreference, palette, scheme } = useAppTheme();
+  const { preference, setPreference, palette } = useAppTheme();
   const { admin, signOut } = useAuth();
   const { church } = useChurch();
   const insets = useSafeAreaInsets();
@@ -129,29 +126,12 @@ export default function SettingsScreen() {
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Appearance</Text>
           </View>
-          <View style={styles.segmented}>
-            {THEME_OPTIONS.map((option) => {
-              const selected = preference === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setPreference(option.value);
-                  }}
-                  style={[styles.segment, selected ? styles.segmentSelected : undefined]}
-                >
-                  <Text
-                    style={[styles.segmentText, selected ? styles.segmentTextSelected : undefined]}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SegmentedControl
+            options={THEME_OPTIONS}
+            value={preference}
+            onChange={setPreference}
+            style={styles.segmented}
+          />
         </Section>
 
         <Section
@@ -170,7 +150,13 @@ export default function SettingsScreen() {
             ? REMINDERS.map((reminder) => {
                 const setting = reminders.reminders[reminder.id];
                 return (
-                  <View key={reminder.id} style={[styles.row, styles.rowDivider]}>
+                  <Animated.View
+                    key={reminder.id}
+                    entering={FadeIn.duration(220)}
+                    exiting={FadeOut.duration(150)}
+                    layout={LinearTransition.duration(220)}
+                    style={[styles.row, styles.rowDivider]}
+                  >
                     <Switch
                       value={setting.enabled}
                       onValueChange={(enabled) => updateReminder(reminder.id, { enabled })}
@@ -189,10 +175,9 @@ export default function SettingsScreen() {
                       hour={setting.hour}
                       minute={setting.minute}
                       disabled={!setting.enabled}
-                      scheme={scheme}
                       onChange={(hour, minute) => updateReminder(reminder.id, { hour, minute })}
                     />
-                  </View>
+                  </Animated.View>
                 );
               })
             : null}
@@ -264,11 +249,18 @@ function Section({
   const styles = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.section}>
+    // Layout transitions let cards resize, and later sections shift, smoothly.
+    <Animated.View layout={LinearTransition.duration(220)} style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.card}>{children}</View>
-      {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
-    </View>
+      <Animated.View layout={LinearTransition.duration(220)} style={styles.card}>
+        {children}
+      </Animated.View>
+      {footer ? (
+        <Animated.Text layout={LinearTransition.duration(220)} style={styles.sectionFooter}>
+          {footer}
+        </Animated.Text>
+      ) : null}
+    </Animated.View>
   );
 }
 
@@ -276,48 +268,23 @@ function ReminderTimePicker({
   hour,
   minute,
   disabled,
-  scheme,
   onChange,
 }: {
   hour: number;
   minute: number;
   disabled: boolean;
-  scheme: "light" | "dark";
   onChange: (hour: number, minute: number) => void;
 }) {
-  const styles = useThemedStyles(createStyles);
   const value = new Date();
   value.setHours(hour, minute, 0, 0);
 
-  const handleChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (event.type === "set" && date) {
-      onChange(date.getHours(), date.getMinutes());
-    }
-  };
-
-  if (process.env.EXPO_OS === "ios") {
-    return (
-      <DateTimePicker
-        value={value}
-        mode="time"
-        display="compact"
-        disabled={disabled}
-        themeVariant={scheme}
-        onChange={handleChange}
-      />
-    );
-  }
-
   return (
-    <Pressable
+    <DateTimeField
+      mode="time"
+      value={value}
       disabled={disabled}
-      onPress={() =>
-        DateTimePickerAndroid.open({ value, mode: "time", onChange: handleChange })
-      }
-      style={[styles.timeButton, disabled ? styles.rowLabelDisabled : undefined]}
-    >
-      <Text style={styles.timeText}>{formatReminderTime(hour, minute)}</Text>
-    </Pressable>
+      onChange={(date) => onChange(date.getHours(), date.getMinutes())}
+    />
   );
 }
 
@@ -399,41 +366,7 @@ const createStyles = (palette: AppPalette) =>
       opacity: 0.6,
     },
     segmented: {
-      flexDirection: "row",
-      backgroundColor: palette.surfaceSoft,
-      borderCurve: "continuous",
-      borderRadius: 10,
       marginHorizontal: 16,
       marginBottom: 14,
-      padding: 3,
-    },
-    segment: {
-      flex: 1,
-      alignItems: "center",
-      borderCurve: "continuous",
-      borderRadius: 8,
-      paddingVertical: 8,
-    },
-    segmentSelected: {
-      backgroundColor: palette.accent,
-    },
-    segmentText: {
-      color: palette.text,
-      fontSize: 15,
-      fontWeight: "600",
-    },
-    segmentTextSelected: {
-      color: palette.onAccent,
-    },
-    timeButton: {
-      backgroundColor: palette.surfaceSoft,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    timeText: {
-      color: palette.text,
-      fontSize: 16,
-      fontVariant: ["tabular-nums"],
     },
   });

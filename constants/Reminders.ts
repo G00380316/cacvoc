@@ -130,9 +130,3 @@ export async function applyReminderSchedule(settings: ReminderSettings) {
     });
   }
 }
-
-export function formatReminderTime(hour: number, minute: number) {
-  const date = new Date();
-  date.setHours(hour, minute, 0, 0);
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}

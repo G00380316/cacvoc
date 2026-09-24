@@ -2,34 +2,44 @@ import * as Haptics from "expo-haptics";
 import { router, Stack } from "expo-router";
 import { useRef, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
 } from "react-native";
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 
+import { Button, TextField } from "@/components/ui/Form";
 import type { AppPalette } from "@/constants/Design";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
+import { useThemedStyles } from "@/contexts/ThemeContext";
 
 export default function SignInScreen() {
   const styles = useThemedStyles(createStyles);
-  const palette = usePalette();
   const { signIn } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const passwordRef = useRef<TextInput>(null);
+  const shake = useSharedValue(0);
 
-  const canSubmit = username.trim().length > 0 && password.length > 0 && !submitting;
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shake.value }],
+  }));
+
+  const hasInput = username.trim().length > 0 && password.length > 0;
 
   const submit = async () => {
-    if (!canSubmit) {
+    if (!hasInput || submitting) {
       return;
     }
 
@@ -43,6 +53,13 @@ export default function SignInScreen() {
       router.navigate("/editor");
     } catch (signInError) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      shake.value = withSequence(
+        withTiming(-8, { duration: 50 }),
+        withTiming(8, { duration: 50 }),
+        withTiming(-5, { duration: 50 }),
+        withTiming(5, { duration: 50 }),
+        withTiming(0, { duration: 50 })
+      );
       setError(signInError instanceof Error ? signInError.message : "Sign in failed");
       setSubmitting(false);
     }
@@ -62,17 +79,14 @@ export default function SignInScreen() {
           ),
         }}
       />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.intro}>
           Sign in with the admin account you were given to manage your church&apos;s content.
         </Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Username</Text>
-          <TextInput
+        <Animated.View style={[styles.fields, shakeStyle]}>
+          <TextField
+            label="Username"
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -82,15 +96,10 @@ export default function SignInScreen() {
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
             placeholder="Username"
-            placeholderTextColor={palette.muted}
-            style={styles.input}
           />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
+          <TextField
             ref={passwordRef}
+            label="Password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -99,33 +108,22 @@ export default function SignInScreen() {
             returnKeyType="go"
             onSubmitEditing={submit}
             placeholder="Password"
-            placeholderTextColor={palette.muted}
-            style={styles.input}
           />
-        </View>
+        </Animated.View>
 
         {error ? (
-          <Text selectable style={styles.error}>
+          <Animated.Text key={error} entering={FadeIn.duration(200)} selectable style={styles.error}>
             {error}
-          </Text>
+          </Animated.Text>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={!canSubmit}
+        <Button
+          title="Sign in"
+          disabled={!hasInput}
+          loading={submitting}
           onPress={submit}
-          style={({ pressed }) => [
-            styles.button,
-            !canSubmit ? styles.buttonDisabled : undefined,
-            pressed ? styles.buttonPressed : undefined,
-          ]}
-        >
-          {submitting ? (
-            <ActivityIndicator color={palette.onAccent} />
-          ) : (
-            <Text style={styles.buttonText}>Sign in</Text>
-          )}
-        </Pressable>
+          style={styles.submit}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -150,48 +148,15 @@ const createStyles = (palette: AppPalette) =>
       fontSize: 16,
       lineHeight: 23,
     },
-    field: {
-      gap: 6,
-    },
-    label: {
-      color: palette.text,
-      fontSize: 14,
-      fontWeight: "700",
-    },
-    input: {
-      backgroundColor: palette.surface,
-      borderColor: palette.border,
-      borderCurve: "continuous",
-      borderRadius: 10,
-      borderWidth: 1,
-      color: palette.text,
-      fontSize: 17,
-      paddingHorizontal: 14,
-      paddingVertical: 13,
+    fields: {
+      gap: 18,
     },
     error: {
       color: palette.danger,
       fontSize: 15,
       lineHeight: 21,
     },
-    button: {
-      alignItems: "center",
-      backgroundColor: palette.accent,
-      borderCurve: "continuous",
-      borderRadius: 12,
-      justifyContent: "center",
-      minHeight: 52,
+    submit: {
       marginTop: 6,
-    },
-    buttonDisabled: {
-      opacity: 0.45,
-    },
-    buttonPressed: {
-      opacity: 0.75,
-    },
-    buttonText: {
-      color: palette.onAccent,
-      fontSize: 17,
-      fontWeight: "700",
     },
   });

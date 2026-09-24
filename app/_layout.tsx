@@ -98,6 +98,7 @@ function RootNavigator() {
             name="sign-in"
             options={{ title: "Admin sign in", presentation: "modal" }}
           />
+          <Stack.Screen name="post-editor" options={{ presentation: "modal" }} />
         </Stack.Protected>
         <Stack.Screen
           name="welcome"

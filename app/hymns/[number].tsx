@@ -3,8 +3,10 @@ import * as Haptics from "expo-haptics";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import type { AppPalette } from "@/constants/Design";
 import { getAdjacentHymns, getHymn } from "@/constants/Hymns";
 import { usePalette, useThemedStyles } from "@/contexts/ThemeContext";
@@ -90,22 +92,29 @@ export default function HymnScreen() {
       <Stack.Screen options={headerOptions} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
-        contentInsetAdjustmentBehavior="automatic"
       >
-        <Text style={styles.number}>{hymn.number}</Text>
-        <Text style={[styles.title, { fontSize: fontSize + 6, lineHeight: (fontSize + 6) * 1.25 }]}>
-          {hymn.title}
-        </Text>
-        {meta ? <Text style={styles.meta}>{meta}</Text> : null}
-        {hymn.scriptureText ? (
-          <Text style={styles.scriptureText}>{hymn.scriptureText}</Text>
-        ) : null}
+        <Animated.View entering={FadeIn.duration(260)}>
+          <Text style={styles.number}>{hymn.number}</Text>
+          <Text
+            style={[styles.title, { fontSize: fontSize + 6, lineHeight: (fontSize + 6) * 1.25 }]}
+          >
+            {hymn.title}
+          </Text>
+          {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+          {hymn.scriptureText ? (
+            <Text style={styles.scriptureText}>{hymn.scriptureText}</Text>
+          ) : null}
+        </Animated.View>
 
         <View style={styles.verses}>
           {hymn.verses.map((verse, index) => {
             const isChorus = !/^\d+$/.test(verse.label);
             return (
-              <View key={`${verse.label}-${index}`} style={styles.verse}>
+              <Animated.View
+                key={`${verse.label}-${index}`}
+                entering={FadeInUp.duration(320).delay(Math.min(80 + index * 60, 440))}
+                style={styles.verse}
+              >
                 <Text style={styles.verseLabel}>{verse.label}</Text>
                 <Text
                   selectable
@@ -117,43 +126,39 @@ export default function HymnScreen() {
                 >
                   {verse.lines.join("\n")}
                 </Text>
-              </View>
+              </Animated.View>
             );
           })}
         </View>
 
-        <View style={styles.pager}>
+        <Animated.View entering={FadeIn.duration(300).delay(360)} style={styles.pager}>
           {previous ? (
-            <Pressable
+            <PressableScale
               onPress={() => router.replace(`/hymns/${previous.number}`)}
-              style={({ pressed }) => [styles.pagerButton, pressed ? styles.pressed : undefined]}
+              style={styles.pagerButton}
             >
               <Text style={styles.pagerLabel}>Previous</Text>
               <Text style={styles.pagerTitle} numberOfLines={1}>
                 {previous.number}. {previous.title}
               </Text>
-            </Pressable>
+            </PressableScale>
           ) : (
             <View style={styles.pagerSpacer} />
           )}
           {next ? (
-            <Pressable
+            <PressableScale
               onPress={() => router.replace(`/hymns/${next.number}`)}
-              style={({ pressed }) => [
-                styles.pagerButton,
-                styles.pagerNext,
-                pressed ? styles.pressed : undefined,
-              ]}
+              style={[styles.pagerButton, styles.pagerNext]}
             >
               <Text style={styles.pagerLabel}>Next</Text>
               <Text style={[styles.pagerTitle, styles.pagerTitleNext]} numberOfLines={1}>
                 {next.number}. {next.title}
               </Text>
-            </Pressable>
+            </PressableScale>
           ) : (
             <View style={styles.pagerSpacer} />
           )}
-        </View>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -254,9 +259,6 @@ const createStyles = (palette: AppPalette) =>
     },
     pagerSpacer: {
       flex: 1,
-    },
-    pressed: {
-      opacity: 0.6,
     },
     pagerLabel: {
       color: palette.muted,

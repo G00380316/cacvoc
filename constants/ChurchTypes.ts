@@ -9,7 +9,9 @@ export type Church = {
   latitude?: number | null;
   longitude?: number | null;
   status?: ChurchStatus;
-  distanceKm?: number;
+  distanceKm?: number | null;
+  /** Set on suggestions found on OpenStreetMap rather than registered in the app. */
+  source?: "openstreetmap";
   submittedBy?: { id: string; username: string } | null;
 };
 
